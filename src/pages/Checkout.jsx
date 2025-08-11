@@ -16,6 +16,7 @@ import {
 import { useRental } from '../context/RentalContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import RazorpayPayment from '../components/ui/RazorpayPayment';
 import toast from 'react-hot-toast';
 
 const Checkout = () => {
@@ -25,6 +26,8 @@ const Checkout = () => {
   
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [showRazorpay, setShowRazorpay] = useState(false);
+  const [currentBooking, setCurrentBooking] = useState(null);
   
   const [deliveryInfo, setDeliveryInfo] = useState({
     address: user?.address || '',
@@ -130,8 +133,16 @@ const Checkout = () => {
       };
 
       const result = await createBooking(bookingData);
-      toast.success('Booking created successfully!');
-      navigate(`/booking-confirmation/${result.booking._id}`);
+      
+      if (paymentInfo.method === 'razorpay') {
+        // For Razorpay, show payment modal
+        setCurrentBooking(result.booking);
+        setShowRazorpay(true);
+      } else {
+        // For regular card payment, proceed as before
+        toast.success('Booking created successfully!');
+        navigate(`/booking-confirmation/${result.booking._id}`);
+      }
     } catch (error) {
       toast.error('Failed to create booking. Please try again.');
       console.error('Booking error:', error);
@@ -635,6 +646,31 @@ const Checkout = () => {
           </div>
         </div>
       </div>
+      
+      {/* Razorpay Payment Modal */}
+      {showRazorpay && currentBooking && (
+        <RazorpayPayment
+          bookingId={currentBooking._id}
+          amount={total}
+          currency="INR"
+          onSuccess={(booking) => {
+            setShowRazorpay(false);
+            setCurrentBooking(null);
+            clearCart();
+            toast.success('Payment successful! Booking confirmed.');
+            navigate(`/booking-confirmation/${booking.id}`);
+          }}
+          onFailure={() => {
+            setShowRazorpay(false);
+            setCurrentBooking(null);
+            toast.error('Payment failed. Please try again.');
+          }}
+          onClose={() => {
+            setShowRazorpay(false);
+            setCurrentBooking(null);
+          }}
+        />
+      )}
     </div>
   );
 };

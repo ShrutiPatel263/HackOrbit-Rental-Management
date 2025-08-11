@@ -3,9 +3,24 @@ import cors from 'cors';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Razorpay configuration
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_51Hh8QKQKQKQKQ';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test_secret_key_for_demo';
+const razorpay = new Razorpay({
+  key_id: RAZORPAY_KEY_ID,
+  key_secret: RAZORPAY_KEY_SECRET,
+});
+
+// expose public key for frontend
+app.get('/api/razorpay/key', (_req, res) => {
+  res.json({ key: RAZORPAY_KEY_ID, mode: (process.env.NODE_ENV || 'development') });
+});
 
 app.use(cors());
 app.use(express.json());
@@ -640,6 +655,163 @@ app.post('/api/payments/verify', requireAuth, (req, res) => {
   booking.paymentStatus = success ? 'paid' : 'failed';
   if (success && booking.status === 'pending') booking.status = 'confirmed';
   res.json({ success: true, booking });
+});
+
+// Razorpay Payment Endpoints
+app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
+  try {
+    const { bookingId, amount, currency = 'INR' } = req.body || {};
+    
+    if (!bookingId || !amount) {
+      return res.status(400).json({ message: 'Booking ID and amount are required' });
+    }
+
+    const booking = bookings.find((b) => b._id === bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.user.id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // Create Razorpay order
+    const orderOptions = {
+      amount: Math.round(amount * 100), // Convert to paise (smallest currency unit)
+      currency,
+      receipt: `booking_${bookingId}`,
+      notes: {
+        bookingId,
+        userId: req.user.id,
+        userEmail: req.user.email
+      }
+    };
+
+    const order = await razorpay.orders.create(orderOptions);
+    
+    // Update booking with payment info
+    booking.paymentInfo = {
+      ...booking.paymentInfo,
+      razorpayOrderId: order.id,
+      amount,
+      currency,
+      status: 'pending'
+    };
+    booking.paymentStatus = 'processing';
+
+    res.json({
+      orderId: order.id,
+      amount: order.amount / 100, // Convert back from paise
+      currency: order.currency,
+      bookingId
+    });
+  } catch (error) {
+    console.error('Razorpay order creation error:', error);
+    res.status(500).json({ message: 'Failed to create payment order' });
+  }
+});
+
+app.post('/api/razorpay/verify-payment', requireAuth, async (req, res) => {
+  try {
+    const { 
+      razorpay_order_id, 
+      razorpay_payment_id, 
+      razorpay_signature,
+      bookingId 
+    } = req.body || {};
+
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bookingId) {
+      return res.status(400).json({ message: 'Missing payment verification parameters' });
+    }
+
+    const booking = bookings.find((b) => b._id === bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.user.id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // Verify payment signature using env secret (HMAC-SHA256)
+    const payload = `${razorpay_order_id}|${razorpay_payment_id}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .update(payload)
+      .digest('hex');
+
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ message: 'Invalid payment signature' });
+    }
+
+    // Update booking status
+    booking.paymentStatus = 'paid';
+    booking.status = 'confirmed';
+    booking.paymentInfo = {
+      ...booking.paymentInfo,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+      status: 'completed',
+      paidAt: new Date().toISOString(),
+    };
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+      },
+    });
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({ message: 'Failed to verify payment' });
+  }
+});
+
+// Simulate OTP verification for test mode
+app.post('/api/razorpay/verify-otp', requireAuth, (req, res) => {
+  try {
+    const { otp, bookingId } = req.body || {};
+    
+    if (!otp || !bookingId) {
+      return res.status(400).json({ message: 'OTP and booking ID are required' });
+    }
+
+    const booking = bookings.find((b) => b._id === bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // For test mode, accept any 6-digit OTP
+    if (otp.length === 6 && /^\d{6}$/.test(otp)) {
+      // Simulate successful OTP verification
+      booking.paymentStatus = 'paid';
+      booking.status = 'confirmed';
+      booking.paymentInfo = {
+        ...booking.paymentInfo,
+        status: 'completed',
+        otpVerified: true,
+        paidAt: new Date().toISOString()
+      };
+
+      res.json({
+        success: true,
+        message: 'OTP verified successfully',
+        booking: {
+          id: booking._id,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus
+        }
+      });
+    } else {
+      res.status(400).json({ message: 'Invalid OTP format' });
+    }
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'Failed to verify OTP' });
+  }
 });
 
 // Admin APIs

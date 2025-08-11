@@ -70,6 +70,12 @@ export const rentalService = {
   createPayment: (bookingId, amount) => api.post('/payments/create', { bookingId, amount }),
   verifyPayment: (paymentData) => api.post('/payments/verify', paymentData),
   
+  // Razorpay
+  getRazorpayKey: () => api.get('/razorpay/key'),
+  createRazorpayOrder: (bookingId, amount) => api.post('/razorpay/create-order', { bookingId, amount }),
+  verifyRazorpayPayment: (paymentData) => api.post('/razorpay/verify-payment', paymentData),
+  verifyRazorpayOTP: (otp, bookingId) => api.post('/razorpay/verify-otp', { otp, bookingId }),
+  
   // Admin
   getStats: () => api.get('/admin/stats'),
   getCustomers: () => api.get('/admin/customers'),
