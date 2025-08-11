@@ -133,7 +133,7 @@ const Checkout = () => {
         tax
       };
 
-      const result = await createBooking(bookingData);
+      const result = await createBooking(bookingData, paymentInfo.method !== 'razorpay');
       
       if (paymentInfo.method === 'razorpay') {
         try {
@@ -664,28 +664,28 @@ const Checkout = () => {
       </div>
       
       {/* Razorpay Payment Modal */}
-      {showRazorpay && currentBooking && (
+      {showRazorpay && (
         <RazorpayPayment
-          bookingId={currentBooking._id}
-          orderId={currentBooking.razorpayOrderId}
-          amount={total}
-          currency="INR"
-          onSuccess={(booking) => {
+          isOpen={showRazorpay}
+          onClose={() => setShowRazorpay(false)}
+          onSuccess={(result) => {
             setShowRazorpay(false);
-            setCurrentBooking(null);
-            clearCart();
-            toast.success('Payment successful! Booking confirmed.');
-            navigate(`/booking-confirmation/${booking.id}`);
+            clearCart(); // Clear cart after successful payment
+            // Navigate to booking confirmation
+            navigate('/booking-confirmation', { 
+              state: { 
+                booking: currentBooking,
+                paymentSuccess: true 
+              } 
+            });
           }}
-          onFailure={() => {
-            setShowRazorpay(false);
-            setCurrentBooking(null);
-            toast.error('Payment failed. Please try again.');
+          orderData={{
+            amount: currentBooking?.totalAmount || 0,
+            customerName: user?.fullName || 'Guest',
+            customerEmail: user?.email || '',
+            customerPhone: user?.phone || ''
           }}
-          onClose={() => {
-            setShowRazorpay(false);
-            setCurrentBooking(null);
-          }}
+          bookingId={currentBooking?.id}
         />
       )}
     </div>

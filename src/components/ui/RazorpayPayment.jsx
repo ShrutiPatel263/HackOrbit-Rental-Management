@@ -1,30 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, CreditCard, Lock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { rentalService } from '../../services/api';
-import toast from 'react-hot-toast';
 
 const RazorpayPayment = ({ 
-  bookingId, 
-  amount, 
-  currency = 'INR', 
-  orderId: precreatedOrderId, // optional: pass if order already created in parent
+  isOpen, 
+  onClose, 
   onSuccess, 
-  onFailure,
-  onClose 
+  orderData, 
+  bookingId 
 }) => {
-  const [step, setStep] = useState('init'); // init, processing, otp, success, failure
-  const [orderId, setOrderId] = useState(precreatedOrderId || null);
+  const [step, setStep] = useState('init');
+  const [orderId, setOrderId] = useState(null);
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isScriptReady, setIsScriptReady] = useState(false);
   const [publicKey, setPublicKey] = useState('');
-  const [autoStarted, setAutoStarted] = useState(false);
-
-  useEffect(() => {
-    if (precreatedOrderId) setOrderId(precreatedOrderId);
-  }, [precreatedOrderId]);
 
   // Initialize Razorpay
   useEffect(() => {
@@ -32,16 +22,9 @@ const RazorpayPayment = ({
 
     const load = async () => {
       try {
-        // Load Razorpay script and wait for it
-        await new Promise((resolve, reject) => {
-          if (window.Razorpay) return resolve();
-          const script = document.createElement('script');
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.async = true;
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
+        // Load Razorpay script using helper (as per docs)
+        const ok = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+        if (!ok) throw new Error('Razorpay SDK failed to load');
         if (!isMounted) return;
         setIsScriptReady(true);
 
@@ -49,6 +32,11 @@ const RazorpayPayment = ({
         const keyRes = await rentalService.getRazorpayKey();
         if (!isMounted) return;
         setPublicKey(keyRes.key);
+        
+        // If it's a mock key, we'll use fallback flow
+        if (keyRes.mock) {
+          console.log('Using mock Razorpay key, will use fallback flow');
+        }
       } catch (e) {
         console.error('Failed to load Razorpay:', e);
         if (!isMounted) return;
@@ -65,387 +53,277 @@ const RazorpayPayment = ({
 
   // Auto-start once script/key ready. If orderId exists, open directly; otherwise try createOrder (which falls back to client-only flow if server fails)
   useEffect(() => {
-    if (!autoStarted && isScriptReady && publicKey && step === 'init') {
-      setAutoStarted(true);
-      if (orderId) {
-        setStep('processing');
-        initiatePayment({ orderId, amount, currency });
-      } else {
-        // Try to create order; will fallback and open Razorpay even if server fails
-        createOrder();
-      }
+    if (!isScriptReady || !publicKey) return;
+    
+    // Always try to create order first, then open payment
+    createOrder();
+  }, [isScriptReady, publicKey]);
+
+  // Separate effect to handle payment initiation after order is created
+  useEffect(() => {
+    if (orderId && step === 'init') {
+      initiatePayment();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isScriptReady, publicKey, orderId, step, autoStarted]);
+  }, [orderId]);
+
+  const loadScript = (src) => {
+    return new Promise((resolve) => {
+      // If already present
+      if (typeof window !== 'undefined' && window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
 
   const createOrder = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      if (!isScriptReady || !window.Razorpay) {
-        throw new Error('Razorpay not ready');
-      }
-      if (!publicKey) {
-        throw new Error('Missing Razorpay key');
-      }
-
-      // Create order via backend (interceptor returns data directly)
-      const orderRes = await rentalService.createRazorpayOrder(bookingId, amount);
-      const newOrderId = orderRes.orderId;
-      setOrderId(newOrderId);
-      setStep('processing');
-      initiatePayment({ orderId: newOrderId, amount: orderRes.amount, currency: orderRes.currency });
-    } catch (error) {
-      console.error('Order creation failed:', error);
-      // Fallback: open Razorpay without server order to allow OTP demo flow
-      try {
-        setStep('processing');
-        initiatePayment({ orderId: null, amount, currency });
-        toast('Proceeding with test checkout (no order).');
-      } catch (e2) {
-        setError(typeof error === 'string' ? error : (error?.message || 'Failed to create payment order. Please try again.'));
-        setStep('failure');
-        onFailure && onFailure(error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initiatePayment = (orderData) => {
-    if (!window.Razorpay) {
-      setError('Razorpay is not loaded. Please refresh the page.');
-      setStep('failure');
-      onFailure && onFailure(new Error('Razorpay not loaded'));
-      return;
-    }
-
-    const options = {
-      key: publicKey,
-      amount: Math.round(orderData.amount * 100),
-      currency: orderData.currency,
-      name: 'HackOrbit Rentals',
-      description: `Booking Payment - ${bookingId}`,
-      ...(orderData.orderId ? { order_id: orderData.orderId } : {}),
-      handler: async function (response) {
-        try {
-          if (orderData.orderId) {
-            // Verify payment with backend only if order was created server-side
-            const verifyRes = await rentalService.verifyRazorpayPayment({
-              bookingId: bookingId,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            if (verifyRes.success) {
-              setStep('otp');
-            } else {
-              setError('Payment verification failed');
-              setStep('failure');
-              onFailure && onFailure(new Error('Verification failed'));
-            }
-          } else {
-            // No server order; continue to OTP step for demo/test
-            setStep('otp');
-          }
-        } catch (err) {
-          console.error('Payment verification failed:', err);
-          setError('Payment verification failed. Please try again.');
-          setStep('failure');
-          onFailure && onFailure(err);
-        }
-      },
-      prefill: {
-        name: 'Test User',
-        email: 'test@example.com',
-        contact: '9999999999'
-      },
-      notes: {
-        bookingId: bookingId
-      },
-      theme: {
-        color: '#3B82F6'
-      },
-      modal: {
-        ondismiss: function () {
-          setStep('failure');
-          setError('Payment was cancelled');
-          onFailure && onFailure(new Error('Payment cancelled'));
-        }
-      }
-    };
-
-    const rzp = new window.Razorpay(options);
-    rzp.open();
-  };
-
-  const verifyOTP = async () => {
-    if (!otp || otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit OTP');
+    if (!orderData?.amount) {
+      setError('Invalid order data');
       return;
     }
 
     setLoading(true);
     setError('');
-    
+
     try {
-      const otpRes = await rentalService.verifyRazorpayOTP(otp, bookingId);
+      console.log('Creating Razorpay order...', { bookingId, amount: orderData.amount });
+      const response = await rentalService.createRazorpayOrder({
+        bookingId,
+        amount: orderData.amount
+      });
       
-      if (otpRes.success) {
-        setStep('success');
-        setTimeout(() => {
-          onSuccess && onSuccess(otpRes.booking);
-        }, 500);
+      console.log('Order creation response:', response);
+      
+      if (response?.orderId) {
+        setOrderId(response.orderId);
       } else {
-        setError('Invalid OTP. Please try again.');
+        setError('Failed to create order');
       }
-    } catch (error) {
-      console.error('OTP verification failed:', error);
-      setError('OTP verification failed. Please try again.');
+    } catch (err) {
+      console.error('Failed to create order:', err);
+      setError('Failed to create order. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRetry = () => {
-    setStep('init');
+  const initiatePayment = () => {
+    console.log('Initiating payment with:', { 
+      windowRazorpay: !!window.Razorpay, 
+      publicKey, 
+      orderId, 
+      amount: orderData.amount 
+    });
+
+    if (!window.Razorpay || !publicKey) {
+      setError('Razorpay not ready');
+      return;
+    }
+
+    setStep('processing');
     setError('');
-    setOtp('');
+
+    try {
+      const paise = Math.max(100, Math.round(Number(orderData.amount || 0) * 100));
+      console.log('Amount in paise:', paise);
+      
+      const options = {
+        key: publicKey,
+        amount: paise,
+        currency: 'INR',
+        name: 'HackOrbit Rentals',
+        description: `Booking #${bookingId}`,
+        order_id: orderId, // Always include order_id since we should have real orders now
+        handler: function (response) {
+          console.log('Payment success:', response);
+          verifyPayment(response);
+        },
+        prefill: {
+          name: orderData.customerName || '',
+          email: orderData.customerEmail || '',
+          contact: orderData.customerPhone || ''
+        },
+        modal: {
+          ondismiss: function () {
+            console.log('Razorpay modal dismissed');
+            setStep('init');
+            onClose();
+          }
+        },
+        theme: {
+          color: '#3B82F6'
+        }
+      };
+
+      console.log('Razorpay options:', options);
+      const rzp = new window.Razorpay(options);
+      console.log('Razorpay instance created, opening...');
+      rzp.open();
+    } catch (err) {
+      console.error('Failed to open Razorpay:', err);
+      setError('Failed to open payment window');
+      setStep('init');
+    }
   };
 
-  const renderStep = () => {
-    switch (step) {
-      case 'init':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="mb-6">
-              <Shield className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Secure Payment with Razorpay
-              </h3>
-              <p className="text-gray-600">
-                You will be redirected to Razorpay's secure payment gateway
-              </p>
-            </div>
-            
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-gray-600">Amount:</span>
-                <span className="font-semibold text-gray-900">
-                  ₹{amount.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Booking ID:</span>
-                <span className="font-mono text-sm text-gray-700">{bookingId}</span>
-              </div>
-            </div>
+  const verifyPayment = async (response) => {
+    setStep('otp');
+    setLoading(true);
+    setError('');
 
-            <button
-              onClick={orderId ? () => initiatePayment({ orderId, amount, currency }) : createOrder}
-              disabled={loading || !isScriptReady || !publicKey}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Preparing Payment...</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-center space-x-2">
-                  <CreditCard className="h-5 w-5" />
-                  <span>{orderId ? 'Open Razorpay' : 'Proceed to Payment'}</span>
-                </div>
-              )}
-            </button>
-            {!isScriptReady && (
-              <p className="text-xs text-gray-500 mt-2">Loading Razorpay...</p>
-            )}
-          </motion.div>
-        );
+    try {
+      // Always verify with backend for real orders
+      const result = await rentalService.verifyRazorpayPayment({
+        ...response,
+        bookingId
+      });
 
-      case 'processing':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="mb-6">
-              <Loader2 className="h-16 w-16 text-blue-600 mx-auto mb-4 animate-spin" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Processing Payment
-              </h3>
-              <p className="text-gray-600">
-                Please complete your payment on Razorpay's secure page
-              </p>
-            </div>
-            
-            <div className="bg-blue-50 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <Lock className="h-5 w-5 text-blue-600" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-blue-900">
-                    Secure Payment Gateway
-                  </p>
-                  <p className="text-xs text-blue-700">
-                    Your payment information is encrypted and secure
-                  </p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        );
+      if (result.success) {
+        setStep('success');
+        onSuccess({ id: bookingId, ...response });
+      } else {
+        setError('Payment verification failed');
+        setStep('init');
+      }
+    } catch (err) {
+      console.error('Payment verification failed:', err);
+      setError('Payment verification failed');
+      setStep('init');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      case 'otp':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="mb-6">
-              <Lock className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Verify OTP
-              </h3>
-              <p className="text-gray-600">
-                Enter the 6-digit OTP sent to your registered mobile number
-              </p>
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2 text-left">
-                OTP Code
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="123456"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-center text-lg font-mono tracking-widest"
-                maxLength={6}
-              />
-            </div>
+  const handleOTPSubmit = async () => {
+    if (!otp || otp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP');
+      return;
+    }
 
-            <button
-              onClick={verifyOTP}
-              disabled={loading || otp.length !== 6}
-              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Verifying...</span>
-                </div>
-              ) : (
-                'Verify OTP'
-              )}
-            </button>
+    setLoading(true);
+    setError('');
 
-            <div className="mt-4 text-sm text-gray-500">
-              <p>For test mode, use any 6-digit number</p>
-            </div>
-          </motion.div>
-        );
+    try {
+      const result = await rentalService.verifyRazorpayOTP({
+        bookingId,
+        otp
+      });
 
-      case 'success':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="mb-6">
-              <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Payment Successful!
-              </h3>
-              <p className="text-gray-600">
-                Your booking has been confirmed
-              </p>
-            </div>
-            
-            <div className="bg-green-50 rounded-lg p-4 mb-6">
-              <div className="flex items-center space-x-3">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <div className="text-left">
-                  <p className="text-sm font-medium text-green-900">
-                    Booking Confirmed
-                  </p>
-                  <p className="text-xs text-green-700">
-                    You will receive a confirmation email shortly
-                  </p>
-                </div>
-              </div>
-            </div>
+      if (result.success) {
+        setStep('success');
+        onSuccess({ id: bookingId });
+      } else {
+        setError('Invalid OTP');
+      }
+    } catch (err) {
+      console.error('OTP verification failed:', err);
+      setError('OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            <div className="text-sm text-gray-600">
-              <p>Redirecting to booking confirmation...</p>
-            </div>
-          </motion.div>
-        );
+  if (!isOpen) return null;
 
-      case 'failure':
-        return (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="mb-6">
-              <AlertCircle className="h-16 w-16 text-red-600 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Payment Failed
-              </h3>
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 relative" style={{ zIndex: 9999 }}>
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+        >
+          ✕
+        </button>
+
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            {step === 'success' ? 'Payment Successful!' : 'Complete Payment'}
+          </h2>
+
+          {step === 'init' && (
+            <div>
               <p className="text-gray-600 mb-4">
-                {error || 'Something went wrong with your payment'}
+                Click the button below to proceed with Razorpay payment.
               </p>
-            </div>
-            
-            <div className="space-y-3">
               <button
-                onClick={handleRetry}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                onClick={initiatePayment}
+                disabled={!isScriptReady || !publicKey || loading}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Loading...' : 'Proceed to Payment'}
+              </button>
+              {!isScriptReady && (
+                <p className="text-xs text-gray-500 mt-2">Loading Razorpay...</p>
+              )}
+            </div>
+          )}
+
+          {step === 'processing' && (
+            <div>
+              <p className="text-gray-600 mb-4">
+                Opening Razorpay payment window...
+              </p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <button
+                onClick={initiatePayment}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700"
               >
                 Try Again
               </button>
-              
+            </div>
+          )}
+
+          {step === 'otp' && (
+            <div>
+              <p className="text-gray-600 mb-4">
+                Please enter the OTP sent to your phone:
+              </p>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter 6-digit OTP"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 text-center text-lg tracking-widest"
+                maxLength={6}
+              />
+              <button
+                onClick={handleOTPSubmit}
+                disabled={loading || otp.length !== 6}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Verifying...' : 'Verify OTP'}
+              </button>
+            </div>
+          )}
+
+          {step === 'success' && (
+            <div>
+              <div className="text-green-500 text-6xl mb-4">✓</div>
+              <p className="text-gray-600 mb-4">
+                Your payment has been processed successfully!
+              </p>
               <button
                 onClick={onClose}
-                className="w-full bg-gray-200 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700"
               >
                 Close
               </button>
             </div>
-          </motion.div>
-        );
+          )}
 
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.9 }}
-        className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
-      >
-        <div className="p-6">
-          <AnimatePresence mode="wait">
-            {renderStep()}
-          </AnimatePresence>
+          {error && (
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+              {error}
+            </div>
+          )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 };

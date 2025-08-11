@@ -97,10 +97,12 @@ export const RentalProvider = ({ children }) => {
     }
   };
 
-  const createBooking = async (bookingData) => {
+  const createBooking = async (bookingData, clearCartAfter = true) => {
     try {
       const response = await rentalService.createBooking(bookingData);
-      clearCart();
+      if (clearCartAfter) {
+        clearCart();
+      }
       return response;
     } catch (error) {
       console.error('Failed to create booking:', error);

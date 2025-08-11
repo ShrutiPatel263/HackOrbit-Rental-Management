@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Razorpay configuration
-const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_51Hh8QKQKQKQKQ';
+const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_6FNI5mvEicv72q';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test_secret_key_for_demo';
 const razorpay = new Razorpay({
   key_id: RAZORPAY_KEY_ID,
@@ -18,8 +18,15 @@ const razorpay = new Razorpay({
 });
 
 // expose public key for frontend
-app.get('/api/razorpay/key', (_req, res) => {
-  res.json({ key: RAZORPAY_KEY_ID, mode: (process.env.NODE_ENV || 'development') });
+app.get('/api/razorpay/key', (req, res) => {
+  try {
+    // Use the configured Razorpay key
+    res.json({ key: RAZORPAY_KEY_ID });
+  } catch (error) {
+    console.error('Error getting Razorpay key:', error);
+    // Fallback to the configured key
+    res.json({ key: RAZORPAY_KEY_ID });
+  }
 });
 
 app.use(cors());
