@@ -490,11 +490,16 @@ app.post('/api/auth/register', (req, res) => {
   if (users.has(normalizedEmail)) {
     return res.status(409).json({ message: 'User already exists' });
   }
+  
+  // Auto-assign admin role for @rentease.com emails
+  const isAdminEmail = normalizedEmail.includes('@rentease.com');
+  const userRole = isAdminEmail ? 'admin' : 'customer';
+  
   const user = {
     id: `u_${Math.random().toString(36).slice(2)}`,
     name: name || normalizedEmail.split('@')[0],
     email: normalizedEmail,
-    role: 'customer',
+    role: userRole,
   };
   users.set(normalizedEmail, { ...user, password: String(password).trim() });
   const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
@@ -557,6 +562,14 @@ app.put('/api/auth/profile', (req, res) => {
   }
 });
 
+// Helper function to check if user has admin privileges
+function hasAdminPrivileges(user) {
+  if (!user) return false;
+  const isAdminRole = user.role === 'admin';
+  const isAdminEmail = user.email && user.email.includes('@rentease.com');
+  return isAdminRole || isAdminEmail;
+}
+
 // Simple auth middleware
 function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || '';
@@ -582,7 +595,10 @@ function requireAuth(req, res, next) {
 
 function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
-  if (req.user.role !== 'admin') return res.status(403).json({ message: 'Forbidden' });
+  
+  if (!hasAdminPrivileges(req.user)) {
+    return res.status(403).json({ message: 'Forbidden - Admin access required' });
+  }
   next();
 }
 
@@ -617,7 +633,7 @@ app.post('/api/bookings/check-availability', (req, res) => {
 // Bookings API
 app.get('/api/bookings', requireAuth, (req, res) => {
   // Admin gets all; customer gets own
-  const raw = req.user.role === 'admin' ? bookings : bookings.filter((b) => b.user?.id === req.user.id);
+  const raw = hasAdminPrivileges(req.user) ? bookings : bookings.filter((b) => b.user?.id === req.user.id);
   const list = raw.map((b) => {
     const firstItem = (b.items || [])[0] || {};
     const product = products.find((p) => p._id === firstItem.product);
@@ -635,7 +651,7 @@ app.get('/api/bookings', requireAuth, (req, res) => {
 app.get('/api/bookings/:id', requireAuth, (req, res) => {
   const raw = bookings.find((b) => b._id === req.params.id);
   if (!raw) return res.status(404).json({ message: 'Booking not found' });
-  if (req.user.role !== 'admin' && raw.user?.id !== req.user.id) {
+  if (!hasAdminPrivileges(req.user) && raw.user?.id !== req.user.id) {
     return res.status(403).json({ message: 'Forbidden' });
   }
   const firstItem = (raw.items || [])[0] || {};
@@ -691,7 +707,7 @@ app.put('/api/bookings/:id', requireAuth, (req, res) => {
   const index = bookings.findIndex((b) => b._id === req.params.id);
   if (index === -1) return res.status(404).json({ message: 'Booking not found' });
   const current = bookings[index];
-  if (req.user.role !== 'admin' && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
+  if (!hasAdminPrivileges(req.user) && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
   const next = { ...current, ...req.body };
   bookings[index] = next;
   res.json({ booking: next });
@@ -701,7 +717,7 @@ app.put('/api/bookings/:id/cancel', requireAuth, (req, res) => {
   const index = bookings.findIndex((b) => b._id === req.params.id);
   if (index === -1) return res.status(404).json({ message: 'Booking not found' });
   const current = bookings[index];
-  if (req.user.role !== 'admin' && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
+  if (!hasAdminPrivileges(req.user) && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
   const next = { ...current, status: 'cancelled' };
   bookings[index] = next;
   res.json({ booking: next });

@@ -22,16 +22,16 @@
   },
   "admin3@rentease.com": {
     "id": "u_6kfums9iwhr",
-    "name": "admin3",
+    "name": "Admin Manager",
     "email": "admin3@rentease.com",
-    "role": "customer",
+    "role": "admin",
     "password": "admin456"
   },
   "admin@rentease1.com": {
     "id": "u_yg5tvk8c7ih",
-    "name": "admin2",
+    "name": "Super Admin",
     "email": "admin@rentease1.com",
-    "role": "customer",
+    "role": "admin",
     "password": "admin456"
   },
   "demo56@customer.com": {
@@ -40,5 +40,33 @@
     "email": "demo56@customer.com",
     "role": "customer",
     "password": "demo567"
+  },
+  "demo1@customer.com": {
+    "id": "u_8rd0mxete2p",
+    "name": "customer1",
+    "email": "demo1@customer.com",
+    "role": "customer",
+    "password": "demo12"
+  },
+  "admin1@rentease.com": {
+    "id": "u_tnnheozrof",
+    "name": "admin1",
+    "email": "admin1@rentease.com",
+    "role": "admin",
+    "password": "admin12"
+  },
+  "admin2@rentease.com": {
+    "id": "u_qughf02lg2i",
+    "name": "admin2",
+    "email": "admin2@rentease.com",
+    "role": "admin",
+    "password": "admin123"
+  },
+  "admin10@rentease.com": {
+    "id": "u_tgvcv5txpkb",
+    "name": "admin10",
+    "email": "admin10@rentease.com",
+    "role": "admin",
+    "password": "admin1234"
   }
 }
