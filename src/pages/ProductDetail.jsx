@@ -17,13 +17,16 @@ import {
   Check
 } from 'lucide-react';
 import { useRental } from '../context/RentalContext';
+import { useAuth } from '../context/AuthContext';
 import { rentalService } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ReviewList from '../components/ui/ReviewList';
 import toast from 'react-hot-toast';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const { addToCart } = useRental();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -32,6 +35,8 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1);
   const [isAvailable, setIsAvailable] = useState(true);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -50,6 +55,53 @@ const ProductDetail = () => {
       fetchProduct();
     }
   }, [id]);
+
+  // Fetch reviews for the product
+  useEffect(() => {
+    const fetchReviews = async () => {
+      if (!id) return;
+      
+      setReviewsLoading(true);
+      try {
+        const response = await rentalService.getProductReviews(id);
+        setReviews(response.reviews || []);
+      } catch (error) {
+        console.error('Failed to fetch reviews:', error);
+        toast.error('Failed to load reviews');
+      } finally {
+        setReviewsLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [id]);
+
+  // Handle review submission
+  const handleReviewSubmit = async (reviewData) => {
+    try {
+      const response = await rentalService.createReview(reviewData);
+      if (response.success) {
+        // Add the new review to the list
+        setReviews(prevReviews => [response.review, ...prevReviews]);
+        
+        // Update product rating
+        if (product) {
+          const newReviews = [response.review, ...reviews];
+          const avgRating = newReviews.reduce((sum, r) => sum + r.rating, 0) / newReviews.length;
+          setProduct(prev => ({
+            ...prev,
+            rating: Math.round(avgRating * 10) / 10
+          }));
+        }
+        
+        toast.success('Review submitted successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to submit review:', error);
+      toast.error(error.message || 'Failed to submit review');
+      throw error;
+    }
+  };
 
   useEffect(() => {
     if (startDate && endDate && product) {
@@ -373,6 +425,16 @@ const ProductDetail = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="mt-16">
+          <ReviewList
+            reviews={reviews}
+            onReviewSubmit={handleReviewSubmit}
+            productId={id}
+            user={user}
+          />
         </div>
 
         {/* Related Products */}

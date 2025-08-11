@@ -680,10 +680,27 @@ const Checkout = () => {
             });
           }}
           orderData={{
+            _id: currentBooking?._id || `booking_${Date.now()}`,
             amount: currentBooking?.totalAmount || 0,
+            subtotal: subtotal,
+            deliveryFee: deliveryFee,
+            tax: tax,
+            totalAmount: total,
             customerName: user?.fullName || 'Guest',
             customerEmail: user?.email || '',
-            customerPhone: user?.phone || ''
+            customerPhone: user?.phone || '',
+            items: cart.map(item => ({
+              product: item.product,
+              startDate: item.startDate,
+              endDate: item.endDate,
+              quantity: item.quantity,
+              dailyRate: item.product.dailyRate
+            })),
+            deliveryInfo: deliveryInfo,
+            user: user,
+            status: 'confirmed',
+            paymentStatus: 'paid',
+            createdAt: new Date().toISOString()
           }}
           bookingId={currentBooking?.id}
         />

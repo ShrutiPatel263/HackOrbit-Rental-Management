@@ -72,14 +72,20 @@ export const rentalService = {
   
   // Razorpay
   getRazorpayKey: () => api.get('/razorpay/key'),
-  createRazorpayOrder: (bookingId, amount) => api.post('/razorpay/create-order', { bookingId, amount }),
+  createRazorpayOrder: (data) => api.post('/razorpay/create-order', data),
   verifyRazorpayPayment: (paymentData) => api.post('/razorpay/verify-payment', paymentData),
-  verifyRazorpayOTP: (otp, bookingId) => api.post('/razorpay/verify-otp', { otp, bookingId }),
+  verifyRazorpayOTP: (data) => api.post('/razorpay/verify-otp', data),
   
   // Admin
   getStats: () => api.get('/admin/stats'),
   getCustomers: () => api.get('/admin/customers'),
   getReports: (filters) => api.get('/admin/reports', { params: filters }),
+  
+  // Reviews
+  createReview: (reviewData) => api.post('/reviews', reviewData),
+  getProductReviews: (productId) => api.get(`/reviews/product/${productId}`),
+  markReviewHelpful: (reviewId, isHelpful) => api.put(`/reviews/${reviewId}/helpful`, { isHelpful }),
+  deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}`),
   
   // File Upload
   uploadFile: (file, type = 'product') => {

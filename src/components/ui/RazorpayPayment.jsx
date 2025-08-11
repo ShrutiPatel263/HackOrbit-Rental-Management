@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { rentalService } from '../../services/api';
+import Invoice from './Invoice';
 
 const RazorpayPayment = ({ 
   isOpen, 
@@ -15,6 +16,8 @@ const RazorpayPayment = ({
   const [error, setError] = useState('');
   const [isScriptReady, setIsScriptReady] = useState(false);
   const [publicKey, setPublicKey] = useState('');
+  const [showInvoice, setShowInvoice] = useState(false);
+  const [paymentResponse, setPaymentResponse] = useState(null);
 
   // Initialize Razorpay
   useEffect(() => {
@@ -145,9 +148,13 @@ const RazorpayPayment = ({
           verifyPayment(response);
         },
         prefill: {
-          name: orderData.customerName || '',
-          email: orderData.customerEmail || '',
-          contact: orderData.customerPhone || ''
+          name: orderData.customerName || 'Test User',
+          email: orderData.customerEmail || 'test@example.com',
+          contact: orderData.customerPhone || '9999999999'
+        },
+        notes: {
+          bookingId: bookingId,
+          paymentType: 'card'
         },
         modal: {
           ondismiss: function () {
@@ -178,6 +185,9 @@ const RazorpayPayment = ({
     setError('');
 
     try {
+      // Store payment response for invoice
+      setPaymentResponse(response);
+      
       // Always verify with backend for real orders
       const result = await rentalService.verifyRazorpayPayment({
         ...response,
@@ -251,6 +261,18 @@ const RazorpayPayment = ({
               <p className="text-gray-600 mb-4">
                 Click the button below to proceed with Razorpay payment.
               </p>
+              
+              {/* Test Mode Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-left">
+                <p className="text-sm text-blue-800 font-medium mb-2">🧪 Test Mode - Card Details:</p>
+                <div className="text-xs text-blue-700 space-y-1">
+                  <p><strong>Card:</strong> 4111 1111 1111 1111</p>
+                  <p><strong>Expiry:</strong> Any future date (e.g., 12/25)</p>
+                  <p><strong>CVV:</strong> Any 3 digits (e.g., 123)</p>
+                  <p><strong>Name:</strong> Any name</p>
+                </div>
+              </div>
+              
               <button
                 onClick={initiatePayment}
                 disabled={!isScriptReady || !publicKey || loading}
@@ -308,12 +330,20 @@ const RazorpayPayment = ({
               <p className="text-gray-600 mb-4">
                 Your payment has been processed successfully!
               </p>
-              <button
-                onClick={onClose}
-                className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700"
-              >
-                Close
-              </button>
+              <div className="space-y-3">
+                <button
+                  onClick={() => setShowInvoice(true)}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700"
+                >
+                  📄 View Invoice
+                </button>
+                <button
+                  onClick={onClose}
+                  className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700"
+                >
+                  Complete
+                </button>
+              </div>
             </div>
           )}
 
@@ -324,6 +354,19 @@ const RazorpayPayment = ({
           )}
         </div>
       </div>
+      
+      {/* Invoice Modal */}
+      {showInvoice && (
+        <Invoice 
+          booking={orderData} 
+          paymentDetails={paymentResponse}
+          onClose={() => setShowInvoice(false)}
+          onDownload={() => {
+            // TODO: Implement PDF download functionality
+            alert('PDF download functionality coming soon!');
+          }}
+        />
+      )}
     </div>
   );
 };

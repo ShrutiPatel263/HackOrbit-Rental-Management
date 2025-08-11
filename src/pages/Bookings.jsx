@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { 
   Calendar, 
   Clock, 
@@ -14,16 +15,38 @@ import {
 } from 'lucide-react';
 import { useRental } from '../context/RentalContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import BookingDetails from '../components/ui/BookingDetails';
+import BookingInvoice from '../components/ui/BookingInvoice';
 
 const Bookings = () => {
   const { bookings, fetchBookings, loading } = useRental();
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [showInvoice, setShowInvoice] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchBookings();
   }, []);
+
+  const handleViewDetails = (booking) => {
+    setSelectedBooking(booking);
+    setShowDetails(true);
+  };
+
+  const handleViewInvoice = (booking) => {
+    setSelectedBooking(booking);
+    setShowInvoice(true);
+  };
+
+  const closeModals = () => {
+    setShowDetails(false);
+    setShowInvoice(false);
+    setSelectedBooking(null);
+  };
 
   useEffect(() => {
     let filtered = bookings;
@@ -179,7 +202,10 @@ const Bookings = () => {
 
                       {/* Action Buttons */}
                       <div className="flex items-center space-x-3">
-                        <button className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                        <button 
+                          onClick={() => handleViewDetails(booking)}
+                          className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                        >
                           <Eye className="h-4 w-4" />
                           <span>View Details</span>
                         </button>
@@ -191,7 +217,10 @@ const Bookings = () => {
                           </button>
                         )}
                         
-                        <button className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors">
+                        <button 
+                          onClick={() => handleViewInvoice(booking)}
+                          className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition-colors"
+                        >
                           <Download className="h-4 w-4" />
                           <span>Invoice</span>
                         </button>
@@ -249,13 +278,31 @@ const Bookings = () => {
               }
             </p>
             {(!searchTerm && statusFilter === 'all') && (
-              <button className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+              <button 
+                onClick={() => navigate('/products')}
+                className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
                 Browse Products
               </button>
             )}
           </motion.div>
         )}
       </div>
+
+      {/* Modals */}
+      {showDetails && selectedBooking && (
+        <BookingDetails 
+          booking={selectedBooking} 
+          onClose={closeModals} 
+        />
+      )}
+
+      {showInvoice && selectedBooking && (
+        <BookingInvoice 
+          booking={selectedBooking} 
+          onClose={closeModals} 
+        />
+      )}
     </div>
   );
 };

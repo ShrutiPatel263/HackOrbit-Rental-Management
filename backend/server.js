@@ -11,10 +11,41 @@ const PORT = process.env.PORT || 5000;
 
 // Razorpay configuration
 const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || 'rzp_test_6FNI5mvEicv72q';
-const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'test_secret_key_for_demo';
+const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || 'your_test_secret_key_here';
 const razorpay = new Razorpay({
   key_id: RAZORPAY_KEY_ID,
   key_secret: RAZORPAY_KEY_SECRET,
+});
+
+// Test Razorpay configuration
+app.get('/api/razorpay/test', async (req, res) => {
+  try {
+    console.log('Testing Razorpay configuration...');
+    console.log('Key ID:', RAZORPAY_KEY_ID);
+    console.log('Key Secret:', RAZORPAY_KEY_SECRET ? '***' + RAZORPAY_KEY_SECRET.slice(-4) : 'NOT SET');
+    
+    // Try to create a test order
+    const testOrder = await razorpay.orders.create({
+      amount: 100, // 1 rupee in paise
+      currency: 'INR',
+      receipt: 'test_order'
+    });
+    
+    console.log('Test order created successfully:', testOrder);
+    res.json({ 
+      success: true, 
+      message: 'Razorpay configuration is working',
+      testOrder: testOrder.id
+    });
+  } catch (error) {
+    console.error('Razorpay test failed:', error?.message || error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Razorpay configuration failed',
+      error: error?.message || 'Unknown error',
+      details: 'Please check your RAZORPAY_KEY_SECRET environment variable'
+    });
+  }
 });
 
 // expose public key for frontend
@@ -297,6 +328,9 @@ let products = [
 // In-memory bookings store
 let bookings = [];
 
+// In-memory reviews store
+let reviews = [];
+
 // Helper: date overlap
 function isDateRangeOverlapping(aStart, aEnd, bStart, bEnd) {
   const aS = new Date(aStart).getTime();
@@ -533,7 +567,13 @@ function requireAuth(req, res, next) {
     const email = Buffer.from(base64, 'base64').toString('utf8');
     const record = users.get(email);
     if (!record) return res.status(401).json({ message: 'Unauthorized' });
-    req.user = { id: record.id, email: record.email, name: record.name, role: record.role };
+    req.user = { 
+      id: record.id, 
+      email: record.email, 
+      name: record.name, 
+      fullName: record.fullName || record.name, // Include fullName for reviews
+      role: record.role 
+    };
     next();
   } catch {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -702,22 +742,191 @@ app.post('/api/payments/verify', requireAuth, (req, res) => {
   res.json({ success: true, booking });
 });
 
+// Review Endpoints
+app.post('/api/reviews', requireAuth, async (req, res) => {
+  try {
+    console.log('Review submission request:', { body: req.body, user: req.user });
+    
+    const { productId, rating, title, comment } = req.body;
+    
+    if (!productId || !rating || !title || !comment) {
+      console.log('Missing required fields:', { productId, rating, title, comment });
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    if (rating < 1 || rating > 5) {
+      console.log('Invalid rating:', rating);
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    // Check if user already reviewed this product
+    const existingReview = reviews.find(
+      review => review.productId === productId && review.userId === req.user.id
+    );
+
+    if (existingReview) {
+      console.log('User already reviewed this product:', { userId: req.user.id, productId });
+      return res.status(400).json({ message: 'You have already reviewed this product' });
+    }
+
+    const newReview = {
+      id: `review_${Date.now()}`,
+      productId,
+      userId: req.user.id,
+      userName: req.user.fullName,
+      userEmail: req.user.email,
+      rating: Number(rating),
+      title: title.trim(),
+      comment: comment.trim(),
+      date: new Date().toISOString(),
+      helpfulCount: 0,
+      helpfulUsers: []
+    };
+
+    console.log('Creating new review:', newReview);
+    reviews.push(newReview);
+
+    // Update product rating
+    const product = products.find(p => p._id === productId);
+    if (product) {
+      const productReviews = reviews.filter(r => r.productId === productId);
+      const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
+      product.rating = Math.round(avgRating * 10) / 10; // Round to 1 decimal place
+      console.log('Updated product rating:', { productId, newRating: product.rating });
+    }
+
+    console.log('Review created successfully:', newReview.id);
+    res.status(201).json({ 
+      success: true, 
+      review: newReview,
+      message: 'Review submitted successfully' 
+    });
+  } catch (error) {
+    console.error('Review creation error:', error);
+    res.status(500).json({ message: 'Failed to create review' });
+  }
+});
+
+app.get('/api/reviews/product/:productId', async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const productReviews = reviews.filter(review => review.productId === productId);
+    
+    res.json({ 
+      success: true, 
+      reviews: productReviews,
+      count: productReviews.length 
+    });
+  } catch (error) {
+    console.error('Review fetch error:', error);
+    res.status(500).json({ message: 'Failed to fetch reviews' });
+  }
+});
+
+app.put('/api/reviews/:reviewId/helpful', requireAuth, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { isHelpful } = req.body;
+    
+    const review = reviews.find(r => r.id === reviewId);
+    if (!review) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    const userId = req.user.id;
+    const helpfulIndex = review.helpfulUsers.findIndex(u => u.userId === userId);
+    
+    if (helpfulIndex === -1) {
+      // User hasn't voted yet
+      review.helpfulUsers.push({ userId, isHelpful });
+      if (isHelpful) {
+        review.helpfulCount++;
+      }
+    } else {
+      // User has already voted, update their vote
+      const previousVote = review.helpfulUsers[helpfulIndex].isHelpful;
+      if (previousVote !== isHelpful) {
+        if (isHelpful) {
+          review.helpfulCount++;
+        } else {
+          review.helpfulCount--;
+        }
+        review.helpfulUsers[helpfulIndex].isHelpful = isHelpful;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      helpfulCount: review.helpfulCount,
+      message: 'Vote recorded successfully' 
+    });
+  } catch (error) {
+    console.error('Review helpful update error:', error);
+    res.status(500).json({ message: 'Failed to update review' });
+  }
+});
+
+app.delete('/api/reviews/:reviewId', requireAuth, async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+    
+    if (reviewIndex === -1) {
+      return res.status(404).json({ message: 'Review not found' });
+    }
+
+    const review = reviews[reviewIndex];
+    if (review.userId !== req.user.id) {
+      return res.status(403).json({ message: 'You can only delete your own reviews' });
+    }
+
+    // Remove review
+    reviews.splice(reviewIndex, 1);
+
+    // Update product rating
+    const product = products.find(p => p._id === review.productId);
+    if (product) {
+      const productReviews = reviews.filter(r => r.productId === review.productId);
+      if (productReviews.length > 0) {
+        const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
+        product.rating = Math.round(avgRating * 10) / 10;
+      } else {
+        product.rating = 0;
+      }
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Review deleted successfully' 
+    });
+  } catch (error) {
+    console.error('Review deletion error:', error);
+    res.status(500).json({ message: 'Failed to delete review' });
+  }
+});
+
 // Razorpay Payment Endpoints
 app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
   try {
+    console.log('Received order creation request:', req.body);
     const { bookingId, amount, currency = 'INR' } = req.body || {};
 
     if (!bookingId || !amount) {
+      console.log('Missing required fields:', { bookingId, amount });
       return res.status(400).json({ message: 'Booking ID and amount are required' });
     }
+
+    console.log('Creating order with:', { bookingId, amount, currency });
 
     // Find booking from DB or in-memory
     const booking = bookings.find((b) => b._id === bookingId);
     if (!booking) {
+      console.log('Booking not found:', bookingId);
       return res.status(404).json({ message: 'Booking not found' });
     }
 
     if (booking.user.id !== req.user.id) {
+      console.log('User mismatch:', { bookingUser: booking.user.id, reqUser: req.user.id });
       return res.status(403).json({ message: 'Forbidden' });
     }
 
@@ -733,17 +942,21 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
       }
     };
 
-    // Try real Razorpay order; if it fails (e.g., invalid keys), fall back to a mock order for demo
+    console.log('Razorpay order options:', orderOptions);
+
+    // Try real Razorpay order; if it fails, return error instead of mock order
     let order;
     try {
       order = await razorpay.orders.create(orderOptions);
+      console.log('Razorpay order created successfully:', order);
     } catch (err) {
       console.error('Razorpay API error:', err?.message || err);
-      order = {
-        id: `order_mock_${Date.now()}`,
-        amount: orderOptions.amount,
-        currency: orderOptions.currency,
-      };
+      // Don't fall back to mock order - return error instead
+      return res.status(500).json({ 
+        message: 'Failed to create Razorpay order', 
+        error: err?.message || 'Unknown error',
+        details: 'Please check Razorpay configuration'
+      });
     }
 
     // Save order details to booking
@@ -758,6 +971,13 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
     // If using MongoDB or SQL, you MUST save/update here:
     // await booking.save();
 
+    console.log('Sending response:', {
+      orderId: order.id,
+      amount: order.amount / 100,
+      currency: order.currency,
+      bookingId
+    });
+
     // Send response for frontend's initiatePayment()
     res.json({
       orderId: order.id,
@@ -767,13 +987,9 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Razorpay order creation error:', error?.message || error);
-    // Final fallback response (should rarely hit since we mock above)
-    res.status(200).json({
-      orderId: `order_mock_${Date.now()}`,
-      amount: Math.round(Number(req.body?.amount || 0)),
-      currency: req.body?.currency || 'INR',
-      bookingId: req.body?.bookingId,
-      mock: true
+    res.status(500).json({ 
+      message: 'Internal server error during order creation',
+      error: error?.message || 'Unknown error'
     });
   }
 });
