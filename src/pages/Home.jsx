@@ -10,7 +10,8 @@ import {
   Award,
   ArrowRight,
   Play,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { rentalService } from '../services/api';
 import ImageWithFallback from '../components/ui/ImageWithFallback';
@@ -18,6 +19,7 @@ import ImageWithFallback from '../components/ui/ImageWithFallback';
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDemoModal, setShowDemoModal] = useState(false);
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
@@ -33,6 +35,32 @@ const Home = () => {
 
     fetchFeaturedProducts();
   }, []);
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setShowDemoModal(false);
+      }
+    };
+
+    if (showDemoModal) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [showDemoModal]);
+
+  const openDemoModal = () => {
+    setShowDemoModal(true);
+  };
+
+  const closeDemoModal = () => {
+    setShowDemoModal(false);
+  };
 
   const features = [
     {
@@ -98,7 +126,7 @@ const Home = () => {
                   Browse Products
                   <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
-                <button className="px-8 py-4 border-2 border-white/30 rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-200 flex items-center justify-center group">
+                <button onClick={openDemoModal} className="px-8 py-4 border-2 border-white/30 rounded-xl font-semibold text-lg hover:bg-white/10 transition-all duration-200 flex items-center justify-center group">
                   <Play className="mr-2 h-5 w-5" />
                   Watch Demo
                 </button>
@@ -443,6 +471,185 @@ const Home = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Demo Modal */}
+      {showDemoModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+          onClick={closeDemoModal}
+        >
+          <div 
+            className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">RentEase Interactive Demo</h3>
+              <button 
+                onClick={closeDemoModal} 
+                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors"
+              >
+                <X className="h-6 w-6 text-gray-600" />
+              </button>
+            </div>
+            
+            {/* Interactive Demo Content */}
+            <div className="space-y-6">
+              {/* Step 1: Browse Products */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    1
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-semibold text-gray-900">Browse & Discover</h4>
+                    <p className="text-gray-600">Explore our vast collection of rental equipment</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                    <div className="w-16 h-16 bg-blue-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                      <span className="text-2xl">🔨</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">Tools</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                    <div className="w-16 h-16 bg-green-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                      <span className="text-2xl">📷</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">Electronics</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                    <div className="w-16 h-16 bg-purple-100 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                      <span className="text-2xl">🎉</span>
+                    </div>
+                    <p className="text-sm font-medium text-gray-700">Events</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2: Select & Book */}
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    2
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-semibold text-gray-900">Select & Book</h4>
+                    <p className="text-gray-600">Choose dates and complete your booking</p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                      <div>
+                        <p className="font-medium text-gray-900">Electric Drill</p>
+                        <p className="text-sm text-gray-500">₹15/day</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Duration</p>
+                      <p className="font-medium text-gray-900">3 days</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex space-x-2">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">Start: Dec 15</span>
+                      <span className="px-3 py-1 bg-green-100 text-green-800 text-xs rounded-full">End: Dec 18</span>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Total</p>
+                      <p className="font-bold text-green-600">₹45</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3: Payment & Confirmation */}
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-200">
+                <div className="flex items-center space-x-4 mb-4">
+                  <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    3
+                  </div>
+                  <div>
+                    <h4 className="text-xl font-semibold text-gray-900">Payment & Delivery</h4>
+                    <p className="text-gray-600">Secure payment and free delivery service</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <span className="text-2xl">💳</span>
+                    </div>
+                    <p className="font-medium text-gray-900">Multiple Payment Options</p>
+                    <p className="text-sm text-gray-500">UPI, Cards, Net Banking</p>
+                  </div>
+                  <div className="bg-white rounded-lg p-4 shadow-sm text-center">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <span className="text-2xl">🚚</span>
+                    </div>
+                    <p className="font-medium text-gray-900">Free Delivery</p>
+                    <p className="text-sm text-gray-500">Pickup & Return</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Features Highlight */}
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 border border-orange-200">
+                <h4 className="text-xl font-semibold text-gray-900 mb-4 text-center">Why Choose RentEase?</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">Insured Equipment</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">24/7 Support</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">Quality Guaranteed</span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600">✓</span>
+                    </div>
+                    <span className="text-sm text-gray-700">Instant Booking</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Call to Action */}
+              <div className="text-center bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
+                <h4 className="text-xl font-bold mb-2">Ready to Start Renting?</h4>
+                <p className="text-blue-100 mb-4">Experience the convenience of premium equipment rentals</p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link
+                    to="/products"
+                    onClick={closeDemoModal}
+                    className="px-6 py-2 bg-white text-blue-600 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    Browse Products
+                  </Link>
+                  <Link
+                    to="/register"
+                    onClick={closeDemoModal}
+                    className="px-6 py-2 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-blue-600 transition-colors"
+                  >
+                    Get Started
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
