@@ -394,22 +394,24 @@ app.post('/api/auth/register', (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required' });
   }
-  if (users.has(email)) {
+  const normalizedEmail = String(email).trim().toLowerCase();
+  if (users.has(normalizedEmail)) {
     return res.status(409).json({ message: 'User already exists' });
   }
   const user = {
     id: `u_${Math.random().toString(36).slice(2)}`,
-    name: name || email.split('@')[0],
-    email,
+    name: name || normalizedEmail.split('@')[0],
+    email: normalizedEmail,
     role: 'customer',
   };
-  users.set(email, { ...user, password });
-  const token = `mock.${Buffer.from(email).toString('base64')}.token`;
+  users.set(normalizedEmail, { ...user, password: String(password).trim() });
+  const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
   res.json({ token, user });
 });
 
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body || {};
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '').trim();
   const record = users.get(email);
   if (!record || record.password !== password) {
     return res.status(401).json({ message: 'Invalid credentials' });
