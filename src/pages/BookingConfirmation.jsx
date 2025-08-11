@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { rentalService } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const BookingConfirmation = () => {
   const { id } = useParams();
@@ -94,7 +95,7 @@ const BookingConfirmation = () => {
                 <p className="text-blue-100">Booking ID: {booking.bookingId || booking._id?.slice(-8)}</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold">${booking.totalAmount}</p>
+                <p className="text-2xl font-bold">₹{booking.totalAmount}</p>
                 <p className="text-blue-100">Total Amount</p>
               </div>
             </div>
@@ -111,8 +112,8 @@ const BookingConfirmation = () => {
                   {booking.items?.map((item, index) => (
                     <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
                       <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
-                        <img
-                          src={item.product?.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                        <ImageWithFallback
+                          src={item.product?.images?.[0]}
                           alt={item.product?.name}
                           className="w-full h-full object-cover"
                         />
@@ -122,7 +123,7 @@ const BookingConfirmation = () => {
                           {item.product?.name || 'Product Name'}
                         </h4>
                         <p className="text-sm text-gray-600">
-                          Quantity: {item.quantity} | ${item.dailyRate}/day
+                          Quantity: {item.quantity} | ₹{item.dailyRate}/day
                         </p>
                       </div>
                     </div>

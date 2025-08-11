@@ -142,7 +142,7 @@ const AdminReports = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {[{
             title: 'Total Revenue',
-            value: `$${(report.revenue.total || 0).toLocaleString()}`,
+            value: `₹${(report.revenue.total || 0).toLocaleString()}`,
             icon: DollarSign,
             trend: 'up',
             change: '+18%'
@@ -230,7 +230,7 @@ const AdminReports = () => {
                   </div>
                   <div className="text-right">
                     <div className="text-sm text-gray-500">Revenue</div>
-                    <div className="font-semibold text-gray-900">${(p.revenue || 0).toLocaleString()}</div>
+                    <div className="font-semibold text-gray-900">₹{(p.revenue || 0).toLocaleString()}</div>
                   </div>
                 </div>
               ))}

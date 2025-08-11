@@ -16,6 +16,7 @@ import {
 import { useRental } from '../../context/RentalContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import ImageWithFallback from '../../components/ui/ImageWithFallback';
 
 const statusToBadge = (status) => {
   switch ((status || '').toLowerCase()) {
@@ -277,8 +278,8 @@ const AdminBookings = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="h-10 w-10 rounded-lg overflow-hidden bg-gray-100 mr-3">
-                            <img
-                              src={b.product?.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                            <ImageWithFallback
+                              src={b.product?.images?.[0]}
                               alt={b.product?.name || 'Product'}
                               className="h-full w-full object-cover"
                             />

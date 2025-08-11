@@ -21,7 +21,7 @@ const sampleProducts = [
     weeklyRate: 90,
     rating: 4.8,
     featured: true,
-    images: ['https://images.pexels.com/photos/1029243/pexels-photo-1029243.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1581147036324-c1c89c2c8b5c?w=400&h=300&fit=crop'],
   },
   {
     name: 'Ladder 10ft',
@@ -32,7 +32,7 @@ const sampleProducts = [
     weeklyRate: 48,
     rating: 4.6,
     featured: true,
-    images: ['https://images.pexels.com/photos/434654/pexels-photo-434654.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1581578734948-152db9ac4b5d?w=400&h=300&fit=crop'],
   },
   {
     name: 'Projector 1080p',
@@ -43,7 +43,7 @@ const sampleProducts = [
     weeklyRate: 150,
     rating: 4.7,
     featured: true,
-    images: ['https://images.pexels.com/photos/6433188/pexels-photo-6433188.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1544256718-3bcf237f3974?w=400&h=300&fit=crop'],
   },
   {
     name: 'Cement Mixer',
@@ -54,7 +54,7 @@ const sampleProducts = [
     weeklyRate: 270,
     rating: 4.5,
     featured: false,
-    images: ['https://images.pexels.com/photos/159306/construction-site-build-construction-work-159306.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=400&h=300&fit=crop'],
   },
   {
     name: 'PA Speaker',
@@ -65,19 +65,20 @@ const sampleProducts = [
     weeklyRate: 180,
     rating: 4.9,
     featured: true,
-    images: ['https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop'],
   },
-  {
-    name: 'DSLR Camera',
-    description: 'Professional-grade DSLR camera with 24MP sensor.',
-    category: 'Photography',
-    location: 'Seattle',
-    dailyRate: 40,
-    weeklyRate: 240,
-    rating: 4.8,
-    featured: true,
-    images: ['https://images.pexels.com/photos/51383/camera-lens-lens-reflection-51383.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
+  // {
+  //   name: 'DSLR Camera',
+  //   description: 'Professional-grade DSLR camera with 24MP sensor.',
+  //   category: 'Photography',
+  //   location: 'Seattle',
+  //   dailyRate: 40,
+  //   weeklyRate: 240,
+  //   rating: 4.8,
+  //   featured: true,
+  //   images: ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&h=300&fit=crop'],
+
+  // },
   {
     name: 'GoPro Action Camera',
     description: 'Waterproof 4K action camera with mounts and accessories.',
@@ -87,7 +88,7 @@ const sampleProducts = [
     weeklyRate: 132,
     rating: 4.6,
     featured: true,
-    images: ['https://images.pexels.com/photos/358043/pexels-photo-358043.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop'],
   },
   {
     name: 'Electric Chainsaw',
@@ -98,7 +99,7 @@ const sampleProducts = [
     weeklyRate: 108,
     rating: 4.4,
     featured: false,
-    images: ['https://images.pexels.com/photos/411622/pexels-photo-411622.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1581578734948-152db9ac4b5d?w=400&h=300&fit=crop'],
   },
   {
     name: 'Event Tent 20x30',
@@ -109,7 +110,7 @@ const sampleProducts = [
     weeklyRate: 510,
     rating: 4.7,
     featured: true,
-    images: ['https://images.pexels.com/photos/127371/pexels-photo-127371.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1519167758481-83f550bbd0dc?w=400&h=300&fit=crop'],
   },
   {
     name: 'Electric Scooter',
@@ -120,7 +121,7 @@ const sampleProducts = [
     weeklyRate: 168,
     rating: 4.5,
     featured: false,
-    images: ['https://images.pexels.com/photos/14423/pexels-photo-14423.jpeg?auto=compress&cs=tinysrgb&w=400'],
+    images: ['https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop'],
   }
 ];
 

@@ -22,6 +22,7 @@ import { rentalService } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ReviewList from '../components/ui/ReviewList';
 import toast from 'react-hot-toast';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const ProductDetail = () => {
   const { id } = useParams();
@@ -171,7 +172,7 @@ const ProductDetail = () => {
     );
   }
 
-  const images = product.images || [`https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=800`];
+  const images = product.images || [`https://images.unsplash.com/photo-1581147036324-c1c89c2c8b5c?w=800&h=600&fit=crop`];
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -189,7 +190,7 @@ const ProductDetail = () => {
           {/* Product Images */}
           <div className="space-y-4">
             <div className="relative bg-white rounded-2xl overflow-hidden shadow-sm">
-              <img
+              <ImageWithFallback
                 src={images[currentImageIndex]}
                 alt={product.name}
                 className="w-full h-96 object-cover"
@@ -233,7 +234,7 @@ const ProductDetail = () => {
                       index === currentImageIndex ? 'border-blue-600' : 'border-gray-200'
                     }`}
                   >
-                    <img
+                    <ImageWithFallback
                       src={image}
                       alt={`${product.name} ${index + 1}`}
                       className="w-full h-full object-cover"
@@ -276,11 +277,11 @@ const ProductDetail = () => {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-3xl font-bold text-blue-600">
-                    ${product.dailyRate}/day
+                    ₹{product.dailyRate}/day
                   </p>
                   {product.weeklyRate && (
                     <p className="text-lg text-gray-600">
-                      ${product.weeklyRate}/week
+                      ₹{product.weeklyRate}/week
                     </p>
                   )}
                 </div>
@@ -355,7 +356,7 @@ const ProductDetail = () => {
                       Total Price:
                     </span>
                     <span className="text-2xl font-bold text-blue-600">
-                      ${totalPrice}
+                      ₹{totalPrice}
                     </span>
                   </div>
                 </div>

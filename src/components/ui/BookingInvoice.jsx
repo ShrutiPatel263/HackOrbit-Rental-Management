@@ -1,5 +1,6 @@
 import React from 'react';
 import { Download, Printer, Calendar, MapPin, Package, User, CreditCard } from 'lucide-react';
+import ImageWithFallback from './ImageWithFallback';
 
 const BookingInvoice = ({ booking, onClose }) => {
   if (!booking) return null;
@@ -13,9 +14,9 @@ const BookingInvoice = ({ booking, onClose }) => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(amount);
   };
 
@@ -197,10 +198,10 @@ const BookingInvoice = ({ booking, onClose }) => {
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Information</h3>
             <div className="flex items-start space-x-4">
-              <img
-                src={booking.product?.images?.[0] || 'https://via.placeholder.com/100x100?text=No+Image'}
+              <ImageWithFallback
+                src={booking.product?.images?.[0]}
                 alt={booking.product?.name}
-                className="w-24 h-24 object-cover rounded-lg"
+                className="w-full h-full object-cover"
               />
               <div className="flex-1">
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">{booking.product?.name}</h4>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { rentalService } from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import ImageWithFallback from '../../components/ui/ImageWithFallback';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -97,7 +98,7 @@ const AdminDashboard = () => {
     },
     {
       title: 'Total Revenue',
-      value: `$${stats.totalRevenue?.toLocaleString() || '0'}`,
+      value: `₹${stats.totalRevenue?.toLocaleString() || '0'}`,
       icon: DollarSign,
       color: 'orange',
       change: '+18%',
@@ -236,8 +237,8 @@ const AdminDashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
-                            <img
-                              src={booking.product?.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                            <ImageWithFallback
+                              src={booking.product?.images?.[0]}
                               alt={booking.product?.name}
                               className="w-full h-full object-cover"
                             />
@@ -259,7 +260,7 @@ const AdminDashboard = () => {
                 {booking.status || 'pending'}
               </span>
                           <p className="text-sm font-medium text-gray-900 mt-1">
-                            ${booking.totalAmount || 0}
+                            ₹{booking.totalAmount || 0}
                           </p>
                         </div>
                       </div>

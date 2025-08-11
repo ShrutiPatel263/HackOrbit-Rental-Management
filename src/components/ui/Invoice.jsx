@@ -1,4 +1,5 @@
 import React from 'react';
+import ImageWithFallback from './ImageWithFallback';
 
 const Invoice = ({ booking, paymentDetails, onClose, onDownload }) => {
   const formatDate = (dateString) => {
@@ -112,8 +113,8 @@ const Invoice = ({ booking, paymentDetails, onClose, onDownload }) => {
                       <td className="border border-gray-200 px-4 py-3 text-sm text-gray-900">
                         <div className="flex items-center space-x-3">
                           <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                            <img
-                              src={item.product?.images?.[0] || 'https://via.placeholder.com/48x48'}
+                            <ImageWithFallback
+                              src={item.product?.images?.[0]}
                               alt={item.product?.name || 'Product'}
                               className="w-full h-full object-cover"
                             />

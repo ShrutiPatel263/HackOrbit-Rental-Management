@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useRental } from '../context/RentalContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -145,7 +146,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                <p className="text-3xl font-bold text-gray-900">${stats.totalSpent}</p>
+                <p className="text-3xl font-bold text-gray-900">₹{stats.totalSpent}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-purple-600" />
@@ -212,8 +213,8 @@ const Dashboard = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-12 h-12 bg-gray-200 rounded-lg overflow-hidden">
-                            <img
-                              src={booking.product?.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                            <ImageWithFallback
+                              src={booking.product?.images?.[0]}
                               alt={booking.product?.name}
                               className="w-full h-full object-cover"
                             />
@@ -232,7 +233,7 @@ const Dashboard = () => {
                             {booking.status}
                           </span>
                           <p className="text-sm font-medium text-gray-900 mt-1">
-                            ${booking.totalAmount || 0}
+                            ₹{booking.totalAmount || 0}
                           </p>
                         </div>
                       </div>

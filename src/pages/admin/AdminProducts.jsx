@@ -17,6 +17,7 @@ import { useRental } from '../../context/RentalContext';
 import { rentalService } from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
+import ImageWithFallback from '../../components/ui/ImageWithFallback';
 
 const AdminProducts = () => {
   const { products, fetchProducts, loading } = useRental();
@@ -246,8 +247,8 @@ const AdminProducts = () => {
               className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
             >
               <div className="relative h-48 overflow-hidden">
-                <img
-                  src={product.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=400`}
+                <ImageWithFallback
+                  src={product.images?.[0]}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -285,11 +286,11 @@ const AdminProducts = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <p className="text-lg font-bold text-blue-600">
-                      ${product.dailyRate}/day
+                      ₹{product.dailyRate}/day
                     </p>
                     {product.weeklyRate && (
                       <p className="text-xs text-gray-500">
-                        ${product.weeklyRate}/week
+                        ₹{product.weeklyRate}/week
                       </p>
                     )}
                   </div>
@@ -405,7 +406,7 @@ const AdminProducts = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Daily Rate ($) *
+                      Daily Rate (₹) *
                     </label>
                     <input
                       type="number"
@@ -422,7 +423,7 @@ const AdminProducts = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Weekly Rate ($)
+                      Weekly Rate (₹)
                     </label>
                     <input
                       type="number"
@@ -438,7 +439,7 @@ const AdminProducts = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Monthly Rate ($)
+                      Monthly Rate (₹)
                     </label>
                     <input
                       type="number"

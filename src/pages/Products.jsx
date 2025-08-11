@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useRental } from '../context/RentalContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const Products = () => {
   const { products, loading, fetchProducts } = useRental();
@@ -239,8 +240,8 @@ const Products = () => {
               <div className={`relative overflow-hidden ${
                 viewMode === 'list' ? 'w-64 h-48' : 'h-48'
               }`}>
-                <img
-                  src={product.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=400`}
+                <ImageWithFallback
+                  src={product.images?.[0]}
                   alt={product.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -274,11 +275,11 @@ const Products = () => {
                 <div className="flex items-center justify-between mb-4">
                   <div className="space-y-1">
                     <p className="text-2xl font-bold text-blue-600">
-                      ${product.dailyRate}/day
+                      ₹{product.dailyRate}/day
                     </p>
                     {product.weeklyRate && (
                       <p className="text-sm text-gray-500">
-                        ${product.weeklyRate}/week
+                        ₹{product.weeklyRate}/week
                       </p>
                     )}
                   </div>

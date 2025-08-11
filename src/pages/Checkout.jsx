@@ -20,6 +20,7 @@ import RazorpayPayment from '../components/ui/RazorpayPayment';
 import UPIPayment from '../components/ui/UPIPayment';
 import toast from 'react-hot-toast';
 import { rentalService } from '../services/api';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const Checkout = () => {
   const { cart, removeFromCart, updateCartQuantity, calculateTotal, createBooking, clearCart, fetchBookings } = useRental();
@@ -246,8 +247,8 @@ const Checkout = () => {
                   {cart.map((item) => (
                     <div key={item.id} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
                       <div className="w-16 h-16 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={item.product.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                        <ImageWithFallback
+                          src={item.product.images?.[0]}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                         />
@@ -261,7 +262,7 @@ const Checkout = () => {
                           {new Date(item.startDate).toLocaleDateString()} - {new Date(item.endDate).toLocaleDateString()}
                         </p>
                         <p className="text-sm font-medium text-blue-600">
-                          ${item.product.dailyRate}/day
+                          ₹{item.product.dailyRate}/day
                         </p>
                       </div>
                       
@@ -657,7 +658,7 @@ const Checkout = () => {
               <div className="space-y-4 mb-6">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">₹{subtotal.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex items_center justify-between">
@@ -666,19 +667,19 @@ const Checkout = () => {
                     <span className="text-gray-600">Delivery Fee</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {deliveryFee === 0 ? 'FREE' : `$${deliveryFee.toFixed(2)}`}
+                    {deliveryFee === 0 ? 'FREE' : `₹{deliveryFee.toFixed(2)}`}
                   </span>
                 </div>
                 
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Tax (8%)</span>
-                  <span className="font-semibold text-gray-900">${tax.toFixed(2)}</span>
+                  <span className="font-semibold text-gray-900">₹{tax.toFixed(2)}</span>
                 </div>
                 
                 <div className="border-t border-gray-200 pt-4">
                   <div className="flex items-center justify_between">
                     <span className="text-lg font-semibold text-gray-900">Total</span>
-                    <span className="text-2xl font-bold text-blue-600">${total.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-blue-600">₹{total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -688,7 +689,7 @@ const Checkout = () => {
                   <div className="flex items-center space-x-2">
                     <Truck className="h-4 w-4 text-blue-600" />
                     <span className="text-sm font-medium text-blue-900">
-                      Add ${(500 - subtotal).toFixed(2)} more for free delivery!
+                      Add ₹{(500 - subtotal).toFixed(2)} more for free delivery!
                     </span>
                   </div>
                 </div>

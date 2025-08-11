@@ -13,6 +13,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { rentalService } from '../services/api';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -244,8 +245,8 @@ const Home = () => {
                   className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group"
                 >
                   <div className="relative h-48 overflow-hidden">
-                    <img
-                      src={product.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=400`}
+                    <ImageWithFallback
+                      src={product.images?.[0]}
                       alt={product.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
@@ -271,11 +272,11 @@ const Home = () => {
                     <div className="flex items-center justify-between">
                       <div className="space-y-1">
                         <p className="text-2xl font-bold text-blue-600">
-                          ${product.dailyRate}/day
+                          ₹{product.dailyRate}/day
                         </p>
                         {product.weeklyRate && (
                           <p className="text-sm text-gray-500">
-                            ${product.weeklyRate}/week
+                            ₹{product.weeklyRate}/week
                           </p>
                         )}
                       </div>

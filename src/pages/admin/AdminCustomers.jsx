@@ -181,7 +181,7 @@ const AdminCustomers = () => {
                     </div>
                     <div>
                       <p className="text-gray-500">Total Spent</p>
-                      <p className="font-semibold text-gray-900">${(c.totalSpent ?? 0).toLocaleString()}</p>
+                      <p className="font-semibold text-gray-900">₹{(c.totalSpent ?? 0).toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Last Booking</p>

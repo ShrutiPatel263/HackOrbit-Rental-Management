@@ -17,6 +17,7 @@ import { useRental } from '../context/RentalContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import BookingDetails from '../components/ui/BookingDetails';
 import BookingInvoice from '../components/ui/BookingInvoice';
+import ImageWithFallback from '../components/ui/ImageWithFallback';
 
 const Bookings = () => {
   const { bookings, fetchBookings, loading } = useRental();
@@ -155,8 +156,8 @@ const Bookings = () => {
                     {/* Product Info */}
                     <div className="flex items-center space-x-4">
                       <div className="w-16 h-16 bg-gray-200 rounded-xl overflow-hidden flex-shrink-0">
-                        <img
-                          src={booking.product?.images?.[0] || `https://images.pexels.com/photos/1427107/pexels-photo-1427107.jpeg?auto=compress&cs=tinysrgb&w=100`}
+                        <ImageWithFallback
+                          src={booking.product?.images?.[0]}
                           alt={booking.product?.name}
                           className="w-full h-full object-cover"
                         />
@@ -192,7 +193,7 @@ const Bookings = () => {
                         </span>
                         <div className="text-right">
                           <p className="text-lg font-bold text-gray-900">
-                            ${booking.totalAmount || 0}
+                            ₹{booking.totalAmount || 0}
                           </p>
                           <p className="text-sm text-gray-600">
                             Total Amount
