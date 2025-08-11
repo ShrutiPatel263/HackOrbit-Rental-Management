@@ -37,7 +37,7 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       try {
         const response = await rentalService.getProduct(id);
-        setProduct(response.product);
+        setProduct(response.product || response);
       } catch (error) {
         console.error('Failed to fetch product:', error);
         toast.error('Failed to load product details');
