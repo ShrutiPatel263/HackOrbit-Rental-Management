@@ -31,7 +31,7 @@ const statusToBadge = (status) => {
 };
 
 const AdminBookings = () => {
-  const { bookings, fetchBookings, loading } = useRental();
+  const { bookings, fetchBookings, updateBooking, cancelBooking, loading } = useRental();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
 
@@ -60,7 +60,46 @@ const AdminBookings = () => {
   }, [bookings, searchTerm, statusFilter]);
 
   const handleView = (booking) => {
+    // Navigate to booking details page or open modal
     toast.success(`Viewing booking ${booking._id || ''}`);
+    // You can add navigation here: navigate(`/admin/bookings/${booking._id}`);
+  };
+
+  const handleApprove = async (booking) => {
+    try {
+      await updateBooking(booking._id, { status: 'confirmed' });
+      toast.success('Booking approved successfully');
+    } catch (error) {
+      toast.error('Failed to approve booking');
+      console.error('Approve booking error:', error);
+    }
+  };
+
+  const handleCancel = async (booking) => {
+    try {
+      await cancelBooking(booking._id);
+      toast.success('Booking cancelled successfully');
+    } catch (error) {
+      toast.error('Failed to cancel booking');
+      console.error('Cancel booking error:', error);
+    }
+  };
+
+  const handleExtend = async (booking) => {
+    try {
+      // Extend booking by 7 days
+      const currentEndDate = new Date(booking.endDate);
+      const newEndDate = new Date(currentEndDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+      
+      await updateBooking(booking._id, { 
+        endDate: newEndDate.toISOString(),
+        status: 'active'
+      });
+      toast.success('Booking extended successfully');
+    } catch (error) {
+      toast.error('Failed to extend booking');
+      console.error('Extend booking error:', error);
+    }
   };
 
   const exportCSV = () => {
@@ -214,7 +253,10 @@ const AdminBookings = () => {
                           <DollarSign className="h-4 w-4 text-green-600" />
                           <span>{(b.totalAmount ?? 0).toLocaleString()}</span>
                         </div>
-                        <div className="text-xs text-gray-500">Paid: {b.paymentStatus || 'N/A'}</div>
+                        <div className="text-xs text-gray-500">
+                          Payment: {b.paymentStatus === 'paid' ? '✅ Paid' : b.paymentStatus === 'processing' ? '⏳ Processing' : '❌ Unpaid'}
+                          {b.paymentInfo?.paymentMethod && ` (${b.paymentInfo.paymentMethod.toUpperCase()})`}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusToBadge(b.status)}`}>
@@ -231,19 +273,28 @@ const AdminBookings = () => {
                             <span>View</span>
                           </button>
                           {b.status === 'pending' && (
-                            <button className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center space-x-1">
+                            <button 
+                              onClick={() => handleApprove(b)}
+                              className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center space-x-1"
+                            >
                               <CheckCircle2 className="h-4 w-4" />
                               <span>Approve</span>
                             </button>
                           )}
                           {b.status === 'active' && (
-                            <button className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center space-x-1">
+                            <button 
+                              onClick={() => handleExtend(b)}
+                              className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 flex items-center space-x-1"
+                            >
                               <Clock className="h-4 w-4" />
                               <span>Extend</span>
                             </button>
                           )}
                           {b.status !== 'cancelled' && (
-                            <button className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center space-x-1">
+                            <button 
+                              onClick={() => handleCancel(b)}
+                              className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center space-x-1"
+                            >
                               <XCircle className="h-4 w-4" />
                               <span>Cancel</span>
                             </button>

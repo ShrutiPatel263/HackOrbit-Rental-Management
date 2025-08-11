@@ -75,6 +75,7 @@ export const rentalService = {
   createRazorpayOrder: (data) => api.post('/razorpay/create-order', data),
   verifyRazorpayPayment: (paymentData) => api.post('/razorpay/verify-payment', paymentData),
   verifyRazorpayOTP: (data) => api.post('/razorpay/verify-otp', data),
+  verifyUPIPayment: (data) => api.post('/razorpay/verify-upi', data),
   
   // Admin
   getStats: () => api.get('/admin/stats'),

@@ -110,6 +110,28 @@ export const RentalProvider = ({ children }) => {
     }
   };
 
+  const updateBooking = async (bookingId, updateData) => {
+    try {
+      const response = await rentalService.updateBooking(bookingId, updateData);
+      await fetchBookings(); // Refresh bookings after update
+      return response;
+    } catch (error) {
+      console.error('Failed to update booking:', error);
+      throw error;
+    }
+  };
+
+  const cancelBooking = async (bookingId) => {
+    try {
+      const response = await rentalService.cancelBooking(bookingId);
+      await fetchBookings(); // Refresh bookings after cancellation
+      return response;
+    } catch (error) {
+      console.error('Failed to cancel booking:', error);
+      throw error;
+    }
+  };
+
   const value = {
     cart,
     products,
@@ -122,7 +144,9 @@ export const RentalProvider = ({ children }) => {
     calculateTotal,
     fetchProducts,
     fetchBookings,
-    createBooking
+    createBooking,
+    updateBooking,
+    cancelBooking
   };
 
   return (

@@ -5,6 +5,11 @@ import path from 'path';
 import fs from 'fs';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import connectDB from './config/database.js';
+import User from './models/User.js';
+import Product from './models/Product.js';
+import Booking from './models/Booking.js';
+import Review from './models/Review.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -71,265 +76,10 @@ if (!fs.existsSync(uploadsDir)) {
 const upload = multer({ dest: uploadsDir });
 app.use('/uploads', express.static(uploadsDir));
 
-// Persistent data directory (for demo persistence across restarts)
-const dataDir = path.join(process.cwd(), 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
-const usersFile = path.join(dataDir, 'users.json');
+// Database will be used instead of file-based user storage
 
-function loadUsersFromDisk() {
-  try {
-    if (!fs.existsSync(usersFile)) return new Map();
-    const raw = fs.readFileSync(usersFile, 'utf8');
-    const obj = JSON.parse(raw || '{}');
-    const map = new Map();
-    Object.values(obj).forEach((u) => {
-      if (u?.email) map.set(String(u.email).toLowerCase(), u);
-    });
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-function saveUsersToDisk(usersMap) {
-  try {
-    const obj = {};
-    usersMap.forEach((u, email) => {
-      obj[email] = u;
-    });
-    fs.writeFileSync(usersFile, JSON.stringify(obj, null, 2));
-  } catch {
-    // ignore disk write errors for demo
-  }
-}
-
-// In-memory mock data
-let products = [
-  {
-    _id: 'p1',
-    name: 'Electric Drill',
-    description: 'High-performance cordless electric drill suitable for all DIY tasks.',
-    category: 'Tools',
-    location: 'Chicago',
-    dailyRate: 15,
-    weeklyRate: 90,
-    rating: 4.8,
-    featured: true,
-    images: ['https://images.pexels.com/photos/1029243/pexels-photo-1029243.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p2',
-    name: 'Ladder 10ft',
-    description: 'Sturdy aluminum ladder perfect for indoor and outdoor use.',
-    category: 'Tools',
-    location: 'New York',
-    dailyRate: 8,
-    weeklyRate: 48,
-    rating: 4.6,
-    featured: true,
-    images: ['https://images.pexels.com/photos/434654/pexels-photo-434654.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p3',
-    name: 'Projector 1080p',
-    description: 'Full HD projector ideal for presentations and movie nights.',
-    category: 'Electronics',
-    location: 'San Francisco',
-    dailyRate: 25,
-    weeklyRate: 150,
-    rating: 4.7,
-    featured: true,
-    images: ['https://images.pexels.com/photos/6433188/pexels-photo-6433188.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p4',
-    name: 'Cement Mixer',
-    description: 'Reliable mixer suitable for small to medium construction jobs.',
-    category: 'Construction Equipment',
-    location: 'Houston',
-    dailyRate: 45,
-    weeklyRate: 270,
-    rating: 4.5,
-    featured: false,
-    images: ['https://images.pexels.com/photos/159306/construction-site-build-construction-work-159306.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p5',
-    name: 'PA Speaker',
-    description: 'Powerful PA speaker system perfect for events and parties.',
-    category: 'Event Supplies',
-    location: 'Los Angeles',
-    dailyRate: 30,
-    weeklyRate: 180,
-    rating: 4.9,
-    featured: true,
-    images: ['https://images.pexels.com/photos/167636/pexels-photo-167636.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p6',
-    name: 'DSLR Camera',
-    description: 'Professional-grade DSLR camera with 24MP sensor.',
-    category: 'Photography',
-    location: 'Seattle',
-    dailyRate: 40,
-    weeklyRate: 240,
-    rating: 4.8,
-    featured: true,
-    images: ['https://images.pexels.com/photos/51383/camera-lens-lens-reflection-51383.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p7',
-    name: 'GoPro Action Camera',
-    description: 'Waterproof 4K action camera with mounts and accessories.',
-    category: 'Photography',
-    location: 'Miami',
-    dailyRate: 22,
-    weeklyRate: 132,
-    rating: 4.6,
-    featured: true,
-    images: ['https://images.pexels.com/photos/358043/pexels-photo-358043.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p8',
-    name: 'Electric Chainsaw',
-    description: 'Quiet, efficient chainsaw ideal for yard work and pruning.',
-    category: 'Tools',
-    location: 'Denver',
-    dailyRate: 18,
-    weeklyRate: 108,
-    rating: 4.4,
-    featured: false,
-    images: ['https://images.pexels.com/photos/411622/pexels-photo-411622.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p9',
-    name: 'Event Tent 20x30',
-    description: 'Durable party tent suitable for weddings and outdoor events.',
-    category: 'Event Supplies',
-    location: 'Boston',
-    dailyRate: 85,
-    weeklyRate: 510,
-    rating: 4.7,
-    featured: true,
-    images: ['https://images.pexels.com/photos/127371/pexels-photo-127371.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p10',
-    name: 'Electric Scooter',
-    description: 'Lightweight electric scooter with 25-mile range per charge.',
-    category: 'Vehicles',
-    location: 'San Diego',
-    dailyRate: 28,
-    weeklyRate: 168,
-    rating: 4.5,
-    featured: false,
-    images: ['https://images.pexels.com/photos/14423/pexels-photo-14423.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p11',
-    name: '50mm Prime Lens',
-    description: 'Fast f/1.8 prime lens for portraits and low-light shooting.',
-    category: 'Photography',
-    location: 'Austin',
-    dailyRate: 14,
-    weeklyRate: 84,
-    rating: 4.6,
-    featured: true,
-    images: ['https://images.pexels.com/photos/51383/camera-lens-lens-reflection-51383.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p12',
-    name: 'Pressure Washer',
-    description: '2000 PSI electric pressure washer for patios and driveways.',
-    category: 'Tools',
-    location: 'Atlanta',
-    dailyRate: 20,
-    weeklyRate: 120,
-    rating: 4.5,
-    featured: false,
-    images: ['https://images.pexels.com/photos/4792495/pexels-photo-4792495.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p13',
-    name: 'Camping Kit (4-person)',
-    description: 'Includes tent, sleeping bags, stove, and lantern.',
-    category: 'Sports Equipment',
-    location: 'Portland',
-    dailyRate: 26,
-    weeklyRate: 156,
-    rating: 4.7,
-    featured: true,
-    images: ['https://images.pexels.com/photos/761815/pexels-photo-761815.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p14',
-    name: 'Ergonomic Office Chair',
-    description: 'Adjustable lumbar support with breathable mesh back.',
-    category: 'Furniture',
-    location: 'Chicago',
-    dailyRate: 12,
-    weeklyRate: 72,
-    rating: 4.3,
-    featured: false,
-    images: ['https://images.pexels.com/photos/813691/pexels-photo-813691.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p15',
-    name: 'Tile Cutter',
-    description: 'Heavy-duty manual tile cutter for precise cuts.',
-    category: 'Construction Equipment',
-    location: 'Phoenix',
-    dailyRate: 16,
-    weeklyRate: 96,
-    rating: 4.2,
-    featured: false,
-    images: ['https://images.pexels.com/photos/257700/pexels-photo-257700.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p16',
-    name: 'Audio Mixer 8-Channel',
-    description: 'Compact mixer with effects for small events and bands.',
-    category: 'Event Supplies',
-    location: 'Los Angeles',
-    dailyRate: 32,
-    weeklyRate: 192,
-    rating: 4.6,
-    featured: true,
-    images: ['https://images.pexels.com/photos/164712/pexels-photo-164712.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p17',
-    name: '4K Camera Drone',
-    description: 'Stabilized drone with 4K camera and GPS return to home.',
-    category: 'Electronics',
-    location: 'San Jose',
-    dailyRate: 55,
-    weeklyRate: 330,
-    rating: 4.8,
-    featured: true,
-    images: ['https://images.pexels.com/photos/442587/pexels-photo-442587.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-  {
-    _id: 'p18',
-    name: 'Mini Excavator',
-    description: 'Compact excavator suitable for landscaping and trenching.',
-    category: 'Construction Equipment',
-    location: 'Dallas',
-    dailyRate: 140,
-    weeklyRate: 840,
-    rating: 4.7,
-    featured: false,
-    images: ['https://images.pexels.com/photos/280014/pexels-photo-280014.jpeg?auto=compress&cs=tinysrgb&w=400'],
-  },
-];
-
-// In-memory bookings store
-let bookings = [];
-
-// In-memory reviews store
-let reviews = [];
+// Database will be used instead of in-memory arrays
+// Products, bookings, and reviews are now stored in MongoDB
 
 // Helper: date overlap
 function isDateRangeOverlapping(aStart, aEnd, bStart, bEnd) {
@@ -373,191 +123,275 @@ app.get('/', (_req, res) => {
 });
 
 // Products API
-app.get('/api/products', (req, res) => {
-  const { featured, limit, search, category, minPrice, maxPrice, sortBy } = req.query;
-  let result = [...products];
-
-  if (featured === 'true') {
-    result = result.filter((p) => p.featured);
+app.get('/api/products', async (req, res) => {
+  try {
+    const { featured, limit, search, category, minPrice, maxPrice, sortBy } = req.query;
+    
+    // Build query object
+    let query = {};
+    
+    if (featured === 'true') {
+      query.featured = true;
+    }
+    
+    if (search) {
+      const q = String(search).toLowerCase();
+      query.$or = [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } }
+      ];
+    }
+    
+    if (category) {
+      query.category = category;
+    }
+    
+    if (minPrice || maxPrice) {
+      query.dailyRate = {};
+      if (minPrice) query.dailyRate.$gte = Number(minPrice);
+      if (maxPrice) query.dailyRate.$lte = Number(maxPrice);
+    }
+    
+    // Build sort object
+    let sort = {};
+    if (sortBy === 'name') {
+      sort.name = 1;
+    } else if (sortBy === 'price') {
+      sort.dailyRate = 1;
+    } else if (sortBy === 'rating') {
+      sort.rating = -1;
+    }
+    
+    // Execute query
+    let result = Product.find(query);
+    
+    if (Object.keys(sort).length > 0) {
+      result = result.sort(sort);
+    }
+    
+    if (limit) {
+      const limitNum = Number(limit);
+      if (Number.isFinite(limitNum)) {
+        result = result.limit(limitNum);
+      }
+    }
+    
+    const products = await result.exec();
+    res.json({ products });
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ message: 'Error fetching products' });
   }
-  if (search) {
-    const q = String(search).toLowerCase();
-    result = result.filter((p) =>
-      (p.name || '').toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)
-    );
-  }
-  if (category) {
-    result = result.filter((p) => p.category === category);
-  }
-  const min = minPrice ? Number(minPrice) : undefined;
-  const max = maxPrice ? Number(maxPrice) : undefined;
-  if (Number.isFinite(min)) result = result.filter((p) => (p.dailyRate ?? 0) >= min);
-  if (Number.isFinite(max)) result = result.filter((p) => (p.dailyRate ?? 0) <= max);
-
-  if (sortBy === 'name') {
-    result.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-  } else if (sortBy === 'price') {
-    result.sort((a, b) => (a.dailyRate ?? 0) - (b.dailyRate ?? 0));
-  } else if (sortBy === 'rating') {
-    result.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
-  }
-
-  const numericLimit = limit ? Number(limit) : undefined;
-  if (numericLimit && Number.isFinite(numericLimit)) {
-    result = result.slice(0, numericLimit);
-  }
-  res.json({ products: result });
 });
 
-app.get('/api/products/:id', (req, res) => {
-  const product = products.find((p) => p._id === req.params.id);
-  if (!product) {
-    return res.status(404).json({ message: 'Product not found' });
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json({ product });
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ message: 'Error fetching product' });
   }
-  res.json({ product });
 });
 
 // Create product
-app.post('/api/products', (req, res) => {
-  const body = req.body || {};
-  const newProduct = {
-    _id: `p${Date.now()}`,
-    name: body.name,
-    description: body.description || '',
-    category: body.category || 'Other',
-    dailyRate: Number(body.dailyRate) || 0,
-    weeklyRate: body.weeklyRate ? Number(body.weeklyRate) : undefined,
-    monthlyRate: body.monthlyRate ? Number(body.monthlyRate) : undefined,
-    location: body.location || 'New York',
-    images: Array.isArray(body.images) ? body.images : [],
-    specifications: body.specifications || {},
-    availability: body.availability !== undefined ? !!body.availability : true,
-    rating: body.rating || 4.5,
-    featured: !!body.featured,
-    stock: Number(body.stock) || 5,
-  };
-  products.unshift(newProduct);
-  res.status(201).json({ product: newProduct });
+app.post('/api/products', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const newProduct = new Product({
+      name: body.name,
+      description: body.description || '',
+      category: body.category || 'Other',
+      dailyRate: Number(body.dailyRate) || 0,
+      weeklyRate: body.weeklyRate ? Number(body.weeklyRate) : undefined,
+      monthlyRate: body.monthlyRate ? Number(body.monthlyRate) : undefined,
+      location: body.location || 'New York',
+      images: Array.isArray(body.images) ? body.images : [],
+      specifications: body.specifications || {},
+      availability: body.availability !== undefined ? !!body.availability : true,
+      rating: body.rating || 4.5,
+      featured: !!body.featured,
+      stock: Number(body.stock) || 5,
+    });
+    
+    const savedProduct = await newProduct.save();
+    res.status(201).json({ product: savedProduct });
+  } catch (error) {
+    console.error('Error creating product:', error);
+    res.status(500).json({ message: 'Error creating product' });
+  }
 });
 
 // Update product
-app.put('/api/products/:id', (req, res) => {
-  const index = products.findIndex((p) => p._id === req.params.id);
-  if (index === -1) return res.status(404).json({ message: 'Product not found' });
-  const current = products[index];
-  const next = { ...current, ...req.body };
-  products[index] = next;
-  res.json({ product: next });
+app.put('/api/products/:id', async (req, res) => {
+  try {
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    
+    res.json({ product: updatedProduct });
+  } catch (error) {
+    console.error('Error updating product:', error);
+    res.status(500).json({ message: 'Error updating product' });
+  }
 });
 
 // Delete product
-app.delete('/api/products/:id', (req, res) => {
-  const before = products.length;
-  products = products.filter((p) => p._id !== req.params.id);
-  if (products.length === before) return res.status(404).json({ message: 'Product not found' });
-  res.json({ success: true });
-});
-
-// Users store with simple JSON persistence (for demo only)
-let users = loadUsersFromDisk();
-if (users.size === 0) {
-  // Seed demo users so the demo credentials on the login page work
-  users.set('demo@customer.com', {
-    id: 'u_demo',
-    name: 'Demo Customer',
-    email: 'demo@customer.com',
-    password: 'password123',
-    role: 'customer',
-  });
-
-  users.set('admin@rentease.com', {
-    id: 'u_admin',
-    name: 'Admin User',
-    email: 'admin@rentease.com',
-    password: 'admin123',
-    role: 'admin',
-  });
-  saveUsersToDisk(users);
-}
-
-// Auth API (mock)
-app.post('/api/auth/register', (req, res) => {
-  const { name, email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
-  const normalizedEmail = String(email).trim().toLowerCase();
-  if (users.has(normalizedEmail)) {
-    return res.status(409).json({ message: 'User already exists' });
-  }
-  
-  // Auto-assign admin role for @rentease.com emails
-  const isAdminEmail = normalizedEmail.includes('@rentease.com');
-  const userRole = isAdminEmail ? 'admin' : 'customer';
-  
-  const user = {
-    id: `u_${Math.random().toString(36).slice(2)}`,
-    name: name || normalizedEmail.split('@')[0],
-    email: normalizedEmail,
-    role: userRole,
-  };
-  users.set(normalizedEmail, { ...user, password: String(password).trim() });
-  const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
-  saveUsersToDisk(users);
-  res.json({ token, user });
-});
-
-app.post('/api/auth/login', (req, res) => {
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  const password = String(req.body?.password || '').trim();
-  const record = users.get(email);
-  if (!record || record.password !== password) {
-    return res.status(401).json({ message: 'Invalid credentials' });
-  }
-  const { password: _pw, ...user } = record;
-  const token = `mock.${Buffer.from(email).toString('base64')}.token`;
-  res.json({ token, user });
-});
-
-app.get('/api/auth/verify', (req, res) => {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
+app.delete('/api/products/:id', async (req, res) => {
   try {
-    const base64 = token.split('.')[1];
-    const email = Buffer.from(base64, 'base64').toString('utf8');
-    const record = users.get(email);
-    if (!record) {
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    if (!deletedProduct) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting product:', error);
+    res.status(500).json({ message: 'Error deleting product' });
+  }
+});
+
+// Auth API
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+    
+    const normalizedEmail = String(email).trim().toLowerCase();
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(409).json({ message: 'User already exists' });
+    }
+    
+    // Auto-assign admin role for @rentease.com emails
+    const isAdminEmail = normalizedEmail.includes('@rentease.com');
+    const userRole = isAdminEmail ? 'admin' : 'customer';
+    
+    const user = new User({
+      name: name || normalizedEmail.split('@')[0],
+      email: normalizedEmail,
+      password: String(password).trim(),
+      role: userRole,
+    });
+    
+    const savedUser = await user.save();
+    const { password: _pw, ...userWithoutPassword } = savedUser.toObject();
+    
+    // Add id field for frontend compatibility
+    const userForResponse = {
+      ...userWithoutPassword,
+      id: savedUser._id.toString()
+    };
+    
+    const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
+    
+    res.json({ token, user: userForResponse });
+  } catch (error) {
+    console.error('Error registering user:', error);
+    res.status(500).json({ message: 'Error registering user' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const password = String(req.body?.password || '').trim();
+    
+    const user = await User.findOne({ email });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    const { password: _pw, ...userWithoutPassword } = user.toObject();
+    
+    // Add id field for frontend compatibility
+    const userForResponse = {
+      ...userWithoutPassword,
+      id: user._id.toString()
+    };
+    
+    const token = `mock.${Buffer.from(email).toString('base64')}.token`;
+    res.json({ token, user: userForResponse });
+  } catch (error) {
+    console.error('Error logging in:', error);
+    res.status(500).json({ message: 'Error logging in' });
+  }
+});
+
+app.get('/api/auth/verify', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    const { password: _pw, ...user } = record;
-    return res.json({ user });
-  } catch {
+    
+    const base64 = token.split('.')[1];
+    const email = Buffer.from(base64, 'base64').toString('utf8');
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    const { password: _pw, ...userWithoutPassword } = user.toObject();
+    
+    // Add id field for frontend compatibility
+    const userForResponse = {
+      ...userWithoutPassword,
+      id: user._id.toString()
+    };
+    
+    return res.json({ user: userForResponse });
+  } catch (error) {
+    console.error('Error verifying token:', error);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 });
 
-app.put('/api/auth/profile', (req, res) => {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
+app.put('/api/auth/profile', async (req, res) => {
   try {
-    const base64 = token.split('.')[1];
-    const email = Buffer.from(base64, 'base64').toString('utf8');
-    const record = users.get(email);
-    if (!record) {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    const next = { ...record, ...req.body };
-    users.set(email, next);
-    saveUsersToDisk(users);
-    const { password: _pw, ...user } = next;
-    res.json({ user });
-  } catch {
+    
+    const base64 = token.split('.')[1];
+    const email = Buffer.from(base64, 'base64').toString('utf8');
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    const updatedUser = await User.findByIdAndUpdate(
+      user._id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    
+    const { password: _pw, ...userWithoutPassword } = updatedUser.toObject();
+    
+    // Add id field for frontend compatibility
+    const userForResponse = {
+      ...userWithoutPassword,
+      id: updatedUser._id.toString()
+    };
+    
+    res.json({ user: userForResponse });
+  } catch (error) {
+    console.error('Error updating profile:', error);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 });
@@ -571,24 +405,27 @@ function hasAdminPrivileges(user) {
 }
 
 // Simple auth middleware
-function requireAuth(req, res, next) {
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (!token) return res.status(401).json({ message: 'Unauthorized' });
+async function requireAuth(req, res, next) {
   try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+    
     const base64 = token.split('.')[1];
     const email = Buffer.from(base64, 'base64').toString('utf8');
-    const record = users.get(email);
-    if (!record) return res.status(401).json({ message: 'Unauthorized' });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ message: 'Unauthorized' });
+    
     req.user = { 
-      id: record.id, 
-      email: record.email, 
-      name: record.name, 
-      fullName: record.fullName || record.name, // Include fullName for reviews
-      role: record.role 
+      id: user._id.toString(), 
+      email: user.email, 
+      name: user.name, 
+      fullName: user.fullName || user.name, // Include fullName for reviews
+      role: user.role 
     };
     next();
-  } catch {
+  } catch (error) {
+    console.error('Auth middleware error:', error);
     return res.status(401).json({ message: 'Unauthorized' });
   }
 }
@@ -611,151 +448,233 @@ app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
 });
 
 // Availability check
-app.post('/api/bookings/check-availability', (req, res) => {
-  const { productId, startDate, endDate, quantity = 1 } = req.body || {};
-  const product = products.find((p) => p._id === productId);
-  if (!product) return res.status(404).json({ available: false, message: 'Product not found' });
-  const stock = Number(product.stock || 5);
-  // Count overlapping reserved units
-  let reserved = 0;
-  bookings.forEach((b) => {
-    (b.items || []).forEach((item) => {
-      if (item.product === productId && isDateRangeOverlapping(item.startDate, item.endDate, startDate, endDate)) {
-        reserved += Number(item.quantity || 1);
-      }
+app.post('/api/bookings/check-availability', async (req, res) => {
+  try {
+    const { productId, startDate, endDate, quantity = 1 } = req.body || {};
+    const product = await Product.findById(productId);
+    if (!product) return res.status(404).json({ available: false, message: 'Product not found' });
+    
+    const stock = Number(product.stock || 5);
+    // Count overlapping reserved units
+    const overlappingBookings = await Booking.find({
+      'items.product': productId,
+      status: { $nin: ['cancelled', 'completed'] }
     });
-  });
-  const availableUnits = Math.max(0, stock - reserved);
-  const isAvailable = availableUnits >= Number(quantity || 1);
-  res.json({ available: isAvailable, availableUnits });
+    
+    let reserved = 0;
+    overlappingBookings.forEach((b) => {
+      (b.items || []).forEach((item) => {
+        if (item.product.toString() === productId && isDateRangeOverlapping(item.startDate, item.endDate, startDate, endDate)) {
+          reserved += Number(item.quantity || 1);
+        }
+      });
+    });
+    
+    const availableUnits = Math.max(0, stock - reserved);
+    const isAvailable = availableUnits >= Number(quantity || 1);
+    res.json({ available: isAvailable, availableUnits });
+  } catch (error) {
+    console.error('Error checking availability:', error);
+    res.status(500).json({ message: 'Error checking availability' });
+  }
 });
 
 // Bookings API
-app.get('/api/bookings', requireAuth, (req, res) => {
-  // Admin gets all; customer gets own
-  const raw = hasAdminPrivileges(req.user) ? bookings : bookings.filter((b) => b.user?.id === req.user.id);
-  const list = raw.map((b) => {
-    const firstItem = (b.items || [])[0] || {};
-    const product = products.find((p) => p._id === firstItem.product);
-    return {
-      ...b,
+app.get('/api/bookings', requireAuth, async (req, res) => {
+  try {
+    // Admin gets all; customer gets own
+    const query = hasAdminPrivileges(req.user) ? {} : { 'user.id': req.user.id };
+    const rawBookings = await Booking.find(query).sort({ createdAt: -1 });
+    
+    const list = await Promise.all(rawBookings.map(async (b) => {
+      const firstItem = (b.items || [])[0] || {};
+      const product = firstItem.product ? await Product.findById(firstItem.product) : null;
+      
+      return {
+        ...b.toObject(),
+        startDate: firstItem.startDate,
+        endDate: firstItem.endDate,
+        product,
+        items: await Promise.all((b.items || []).map(async (it) => {
+          const itemProduct = it.product ? await Product.findById(it.product) : null;
+          return { ...it.toObject(), product: itemProduct };
+        }))
+      };
+    }));
+    
+    res.json({ bookings: list });
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({ message: 'Error fetching bookings' });
+  }
+});
+
+app.get('/api/bookings/:id', requireAuth, async (req, res) => {
+  try {
+    const raw = await Booking.findById(req.params.id);
+    if (!raw) return res.status(404).json({ message: 'Booking not found' });
+    if (!hasAdminPrivileges(req.user) && raw.user?.id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    
+    const firstItem = (raw.items || [])[0] || {};
+    const product = firstItem.product ? await Product.findById(firstItem.product) : null;
+    const booking = {
+      ...raw.toObject(),
       startDate: firstItem.startDate,
       endDate: firstItem.endDate,
       product,
-      items: (b.items || []).map((it) => ({ ...it, product: products.find((p) => p._id === it.product) || it.product }))
+      items: await Promise.all((raw.items || []).map(async (it) => {
+        const itemProduct = it.product ? await Product.findById(it.product) : null;
+        return { ...it.toObject(), product: itemProduct };
+      }))
     };
-  });
-  res.json({ bookings: list });
-});
-
-app.get('/api/bookings/:id', requireAuth, (req, res) => {
-  const raw = bookings.find((b) => b._id === req.params.id);
-  if (!raw) return res.status(404).json({ message: 'Booking not found' });
-  if (!hasAdminPrivileges(req.user) && raw.user?.id !== req.user.id) {
-    return res.status(403).json({ message: 'Forbidden' });
+    res.json({ booking });
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    res.status(500).json({ message: 'Error fetching booking' });
   }
-  const firstItem = (raw.items || [])[0] || {};
-  const product = products.find((p) => p._id === firstItem.product);
-  const booking = {
-    ...raw,
-    startDate: firstItem.startDate,
-    endDate: firstItem.endDate,
-    product,
-    items: (raw.items || []).map((it) => ({ ...it, product: products.find((p) => p._id === it.product) || it.product }))
-  };
-  res.json({ booking });
 });
 
-app.post('/api/bookings', requireAuth, (req, res) => {
-  const body = req.body || {};
-  const items = Array.isArray(body.items) ? body.items : [];
-  // Basic availability validation per item
-  for (const item of items) {
-    const product = products.find((p) => p._id === item.product);
-    if (!product) return res.status(400).json({ message: 'Invalid product' });
+app.post('/api/bookings', requireAuth, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const items = Array.isArray(body.items) ? body.items : [];
+    
+    // Basic availability validation per item
+    for (const item of items) {
+      const product = await Product.findById(item.product);
+      if (!product) return res.status(400).json({ message: 'Invalid product' });
+    }
+    
+    const totalAmount = Number(body.totalAmount) || await Promise.all(items.map(async (item) => {
+      const product = await Product.findById(item.product);
+      return calculateRentalPriceForItem(product, item.startDate, item.endDate, item.quantity || 1);
+    })).then(amounts => amounts.reduce((sum, amount) => sum + amount, 0));
+
+    const booking = new Booking({
+      status: 'pending',
+      items,
+      deliveryInfo: body.deliveryInfo || {},
+      paymentInfo: body.paymentInfo || {},
+      totalAmount,
+      user: { id: req.user.id, name: req.user.name, email: req.user.email },
+      paymentStatus: 'unpaid',
+    });
+    
+    const savedBooking = await booking.save();
+    
+    const firstItem = (savedBooking.items || [])[0] || {};
+    const product = firstItem.product ? await Product.findById(firstItem.product) : null;
+    const enriched = {
+      ...savedBooking.toObject(),
+      startDate: firstItem.startDate,
+      endDate: firstItem.endDate,
+      product,
+      items: await Promise.all((savedBooking.items || []).map(async (it) => {
+        const itemProduct = it.product ? await Product.findById(it.product) : null;
+        return { ...it.toObject(), product: itemProduct };
+      }))
+    };
+    res.status(201).json({ booking: enriched });
+  } catch (error) {
+    console.error('Error creating booking:', error);
+    res.status(500).json({ message: 'Error creating booking' });
   }
-  const totalAmount = Number(body.totalAmount) || items.reduce((sum, item) => {
-    const product = products.find((p) => p._id === item.product);
-    return sum + calculateRentalPriceForItem(product, item.startDate, item.endDate, item.quantity || 1);
-  }, 0);
-
-  const booking = {
-    _id: `b_${Date.now()}`,
-    status: 'pending',
-    items,
-    deliveryInfo: body.deliveryInfo || {},
-    paymentInfo: body.paymentInfo || {},
-    totalAmount,
-    createdAt: new Date().toISOString(),
-    user: { id: req.user.id, name: req.user.name, email: req.user.email },
-    paymentStatus: 'unpaid',
-  };
-  bookings.unshift(booking);
-  const firstItem = (booking.items || [])[0] || {};
-  const product = products.find((p) => p._id === firstItem.product);
-  const enriched = {
-    ...booking,
-    startDate: firstItem.startDate,
-    endDate: firstItem.endDate,
-    product,
-    items: (booking.items || []).map((it) => ({ ...it, product: products.find((p) => p._id === it.product) || it.product }))
-  };
-  res.status(201).json({ booking: enriched });
 });
 
-app.put('/api/bookings/:id', requireAuth, (req, res) => {
-  const index = bookings.findIndex((b) => b._id === req.params.id);
-  if (index === -1) return res.status(404).json({ message: 'Booking not found' });
-  const current = bookings[index];
-  if (!hasAdminPrivileges(req.user) && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
-  const next = { ...current, ...req.body };
-  bookings[index] = next;
-  res.json({ booking: next });
+app.put('/api/bookings/:id', requireAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!hasAdminPrivileges(req.user) && booking.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
+    
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    
+    res.json({ booking: updatedBooking });
+  } catch (error) {
+    console.error('Error updating booking:', error);
+    res.status(500).json({ message: 'Error updating booking' });
+  }
 });
 
-app.put('/api/bookings/:id/cancel', requireAuth, (req, res) => {
-  const index = bookings.findIndex((b) => b._id === req.params.id);
-  if (index === -1) return res.status(404).json({ message: 'Booking not found' });
-  const current = bookings[index];
-  if (!hasAdminPrivileges(req.user) && current.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
-  const next = { ...current, status: 'cancelled' };
-  bookings[index] = next;
-  res.json({ booking: next });
+app.put('/api/bookings/:id/cancel', requireAuth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    if (!hasAdminPrivileges(req.user) && booking.user?.id !== req.user.id) return res.status(403).json({ message: 'Forbidden' });
+    
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      req.params.id,
+      { status: 'cancelled' },
+      { new: true, runValidators: true }
+    );
+    
+    res.json({ booking: updatedBooking });
+  } catch (error) {
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ message: 'Error cancelling booking' });
+  }
 });
 
 // Quotations
-app.post('/api/quotations', (req, res) => {
-  const items = Array.isArray(req.body?.items) ? req.body.items : [];
-  const detailed = items.map((item) => {
-    const product = products.find((p) => p._id === item.product);
-    const quantity = Number(item.quantity || 1);
-    const lineTotal = product ? calculateRentalPriceForItem(product, item.startDate, item.endDate, quantity) : 0;
-    return { ...item, lineTotal };
-  });
-  const subtotal = detailed.reduce((s, d) => s + (d.lineTotal || 0), 0);
-  const tax = subtotal * 0.08;
-  const deliveryFee = subtotal > 500 ? 0 : 50;
-  const total = subtotal + tax + deliveryFee;
-  res.json({ quotation: { items: detailed, subtotal, tax, deliveryFee, total } });
+app.post('/api/quotations', async (req, res) => {
+  try {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const detailed = await Promise.all(items.map(async (item) => {
+      const product = await Product.findById(item.product);
+      const quantity = Number(item.quantity || 1);
+      const lineTotal = product ? calculateRentalPriceForItem(product, item.startDate, item.endDate, quantity) : 0;
+      return { ...item, lineTotal };
+    }));
+    const subtotal = detailed.reduce((s, d) => s + (d.lineTotal || 0), 0);
+    const tax = subtotal * 0.08;
+    const deliveryFee = subtotal > 500 ? 0 : 50;
+    const total = subtotal + tax + deliveryFee;
+    res.json({ quotation: { items: detailed, subtotal, tax, deliveryFee, total } });
+  } catch (error) {
+    console.error('Error creating quotation:', error);
+    res.status(500).json({ message: 'Error creating quotation' });
+  }
 });
 
 // Payments (mock)
-app.post('/api/payments/create', requireAuth, (req, res) => {
-  const { bookingId, amount } = req.body || {};
-  const booking = bookings.find((b) => b._id === bookingId);
-  if (!booking) return res.status(404).json({ message: 'Booking not found' });
-  const orderId = `order_${Date.now()}`;
-  booking.paymentStatus = 'processing';
-  res.json({ orderId, amount });
+app.post('/api/payments/create', requireAuth, async (req, res) => {
+  try {
+    const { bookingId, amount } = req.body || {};
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    booking.paymentStatus = 'processing';
+    await booking.save();
+    
+    const orderId = `order_${Date.now()}`;
+    res.json({ orderId, amount });
+  } catch (error) {
+    console.error('Error creating payment:', error);
+    res.status(500).json({ message: 'Error creating payment' });
+  }
 });
 
-app.post('/api/payments/verify', requireAuth, (req, res) => {
-  const { bookingId, success = true } = req.body || {};
-  const booking = bookings.find((b) => b._id === bookingId);
-  if (!booking) return res.status(404).json({ message: 'Booking not found' });
-  booking.paymentStatus = success ? 'paid' : 'failed';
-  if (success && booking.status === 'pending') booking.status = 'confirmed';
-  res.json({ success: true, booking });
+app.post('/api/payments/verify', requireAuth, async (req, res) => {
+  try {
+    const { bookingId, success = true } = req.body || {};
+    const booking = await Booking.findById(bookingId);
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    
+    booking.paymentStatus = success ? 'paid' : 'failed';
+    if (success && booking.status === 'pending') booking.status = 'confirmed';
+    
+    await booking.save();
+    res.json({ success: true, booking });
+  } catch (error) {
+    console.error('Payment verification error:', error);
+    res.status(500).json({ message: 'Error processing payment verification' });
+  }
 });
 
 // Review Endpoints
@@ -776,17 +695,17 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
     }
 
     // Check if user already reviewed this product
-    const existingReview = reviews.find(
-      review => review.productId === productId && review.userId === req.user.id
-    );
+    const existingReview = await Review.findOne({
+      productId: productId,
+      userId: req.user.id
+    });
 
     if (existingReview) {
       console.log('User already reviewed this product:', { userId: req.user.id, productId });
       return res.status(400).json({ message: 'You have already reviewed this product' });
     }
 
-    const newReview = {
-      id: `review_${Date.now()}`,
+    const newReview = new Review({
       productId,
       userId: req.user.id,
       userName: req.user.fullName,
@@ -794,27 +713,27 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
       rating: Number(rating),
       title: title.trim(),
       comment: comment.trim(),
-      date: new Date().toISOString(),
       helpfulCount: 0,
       helpfulUsers: []
-    };
+    });
 
     console.log('Creating new review:', newReview);
-    reviews.push(newReview);
+    const savedReview = await newReview.save();
 
     // Update product rating
-    const product = products.find(p => p._id === productId);
+    const product = await Product.findById(productId);
     if (product) {
-      const productReviews = reviews.filter(r => r.productId === productId);
+      const productReviews = await Review.find({ productId: productId });
       const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
       product.rating = Math.round(avgRating * 10) / 10; // Round to 1 decimal place
+      await product.save();
       console.log('Updated product rating:', { productId, newRating: product.rating });
     }
 
-    console.log('Review created successfully:', newReview.id);
+    console.log('Review created successfully:', savedReview._id);
     res.status(201).json({ 
       success: true, 
-      review: newReview,
+      review: savedReview,
       message: 'Review submitted successfully' 
     });
   } catch (error) {
@@ -826,7 +745,7 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
 app.get('/api/reviews/product/:productId', async (req, res) => {
   try {
     const { productId } = req.params;
-    const productReviews = reviews.filter(review => review.productId === productId);
+    const productReviews = await Review.find({ productId: productId });
     
     res.json({ 
       success: true, 
@@ -844,7 +763,7 @@ app.put('/api/reviews/:reviewId/helpful', requireAuth, async (req, res) => {
     const { reviewId } = req.params;
     const { isHelpful } = req.body;
     
-    const review = reviews.find(r => r.id === reviewId);
+    const review = await Review.findById(reviewId);
     if (!review) {
       return res.status(404).json({ message: 'Review not found' });
     }
@@ -871,6 +790,8 @@ app.put('/api/reviews/:reviewId/helpful', requireAuth, async (req, res) => {
       }
     }
 
+    await review.save();
+
     res.json({ 
       success: true, 
       helpfulCount: review.helpfulCount,
@@ -885,30 +806,30 @@ app.put('/api/reviews/:reviewId/helpful', requireAuth, async (req, res) => {
 app.delete('/api/reviews/:reviewId', requireAuth, async (req, res) => {
   try {
     const { reviewId } = req.params;
-    const reviewIndex = reviews.findIndex(r => r.id === reviewId);
+    const review = await Review.findById(reviewId);
     
-    if (reviewIndex === -1) {
+    if (!review) {
       return res.status(404).json({ message: 'Review not found' });
     }
 
-    const review = reviews[reviewIndex];
     if (review.userId !== req.user.id) {
       return res.status(403).json({ message: 'You can only delete your own reviews' });
     }
 
     // Remove review
-    reviews.splice(reviewIndex, 1);
+    await Review.findByIdAndDelete(reviewId);
 
     // Update product rating
-    const product = products.find(p => p._id === review.productId);
+    const product = await Product.findById(review.productId);
     if (product) {
-      const productReviews = reviews.filter(r => r.productId === review.productId);
+      const productReviews = await Review.find({ productId: review.productId });
       if (productReviews.length > 0) {
         const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
         product.rating = Math.round(avgRating * 10) / 10;
       } else {
         product.rating = 0;
       }
+      await product.save();
     }
 
     res.json({ 
@@ -934,8 +855,8 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
 
     console.log('Creating order with:', { bookingId, amount, currency });
 
-    // Find booking from DB or in-memory
-    const booking = bookings.find((b) => b._id === bookingId);
+    // Find booking from database
+    const booking = await Booking.findById(bookingId);
     if (!booking) {
       console.log('Booking not found:', bookingId);
       return res.status(404).json({ message: 'Booking not found' });
@@ -984,8 +905,7 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
       status: 'pending'
     };
     booking.paymentStatus = 'processing';
-    // If using MongoDB or SQL, you MUST save/update here:
-    // await booking.save();
+    await booking.save();
 
     console.log('Sending response:', {
       orderId: order.id,
@@ -1017,14 +937,15 @@ app.post('/api/razorpay/verify-payment', requireAuth, async (req, res) => {
       razorpay_order_id, 
       razorpay_payment_id, 
       razorpay_signature,
-      bookingId 
+      bookingId,
+      payment_method = 'card' // Add payment method parameter
     } = req.body || {};
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !bookingId) {
       return res.status(400).json({ message: 'Missing payment verification parameters' });
     }
 
-    const booking = bookings.find((b) => b._id === bookingId);
+    const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
@@ -1047,16 +968,21 @@ app.post('/api/razorpay/verify-payment', requireAuth, async (req, res) => {
       }
     }
 
-    // Update booking status
+    // Update booking status - for UPI payments, always mark as paid
     booking.paymentStatus = 'paid';
     booking.status = 'confirmed';
     booking.paymentInfo = {
       ...booking.paymentInfo,
       razorpayPaymentId: razorpay_payment_id,
       razorpayOrderId: razorpay_order_id,
+      paymentMethod: payment_method,
       status: 'completed',
       paidAt: new Date().toISOString(),
     };
+
+    await booking.save();
+
+    console.log(`Payment verified for booking ${bookingId} via ${payment_method}`);
 
     res.json({
       success: true,
@@ -1073,8 +999,57 @@ app.post('/api/razorpay/verify-payment', requireAuth, async (req, res) => {
   }
 });
 
+// Handle UPI payment verification (auto-approve for demo)
+app.post('/api/razorpay/verify-upi', requireAuth, async (req, res) => {
+  try {
+    const { bookingId, upiId, amount } = req.body || {};
+    
+    if (!bookingId || !upiId || !amount) {
+      return res.status(400).json({ message: 'Booking ID, UPI ID, and amount are required' });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.user.id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    // For UPI payments, automatically mark as paid (simulating successful payment)
+    booking.paymentStatus = 'paid';
+    booking.status = 'confirmed';
+    booking.paymentInfo = {
+      ...booking.paymentInfo,
+      paymentMethod: 'upi',
+      upiId: upiId,
+      amount: amount,
+      status: 'completed',
+      paidAt: new Date().toISOString()
+    };
+
+    await booking.save();
+
+    console.log(`UPI payment verified for booking ${bookingId} via ${upiId}`);
+
+    res.json({
+      success: true,
+      message: 'UPI payment verified successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus
+      }
+    });
+  } catch (error) {
+    console.error('UPI payment verification error:', error);
+    res.status(500).json({ message: 'Failed to verify UPI payment' });
+  }
+});
+
 // Simulate OTP verification for test mode
-app.post('/api/razorpay/verify-otp', requireAuth, (req, res) => {
+app.post('/api/razorpay/verify-otp', requireAuth, async (req, res) => {
   try {
     const { otp, bookingId } = req.body || {};
     
@@ -1082,7 +1057,7 @@ app.post('/api/razorpay/verify-otp', requireAuth, (req, res) => {
       return res.status(400).json({ message: 'OTP and booking ID are required' });
     }
 
-    const booking = bookings.find((b) => b._id === bookingId);
+    const booking = await Booking.findById(bookingId);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
@@ -1098,6 +1073,8 @@ app.post('/api/razorpay/verify-otp', requireAuth, (req, res) => {
         otpVerified: true,
         paidAt: new Date().toISOString()
       };
+
+      await booking.save();
 
       res.json({
         success: true,
@@ -1118,80 +1095,122 @@ app.post('/api/razorpay/verify-otp', requireAuth, (req, res) => {
 });
 
 // Admin APIs
-app.get('/api/admin/stats', requireAuth, requireAdmin, (_req, res) => {
-  const totalProducts = products.length;
-  const totalBookings = bookings.length;
-  const totalCustomers = Array.from(users.values()).filter((u) => u.role !== 'admin').length;
-  const totalRevenue = bookings.filter((b) => b.paymentStatus === 'paid').reduce((s, b) => s + (b.totalAmount || 0), 0);
-  const pendingBookings = bookings.filter((b) => b.status === 'pending').length;
-  const activeRentals = bookings.filter((b) => b.status === 'confirmed' || b.status === 'active').length;
-  res.json({
-    stats: { totalProducts, totalBookings, totalCustomers, totalRevenue, pendingBookings, activeRentals }
-  });
-});
-
-app.get('/api/admin/customers', requireAuth, requireAdmin, (_req, res) => {
-  const customerUsers = Array.from(users.values()).filter((u) => u.role !== 'admin');
-  const list = customerUsers.map((u) => {
-    const custBookings = bookings.filter((b) => b.user?.email === u.email);
-    const totalSpent = custBookings.filter((b) => b.paymentStatus === 'paid').reduce((s, b) => s + (b.totalAmount || 0), 0);
-    const lastBooking = custBookings[0]?.createdAt;
-    return {
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      phone: u.phone || '',
-      status: 'active',
-      createdAt: u.createdAt || new Date().toISOString(),
-      totalBookings: custBookings.length,
-      totalSpent,
-      lastBookingAt: lastBooking
-    };
-  });
-  res.json({ customers: list });
-});
-
-app.get('/api/admin/reports', requireAuth, requireAdmin, (req, res) => {
-  // Very simple report based on current memory stores
-  const byStatus = bookings.reduce((acc, b) => {
-    acc[b.status] = (acc[b.status] || 0) + 1;
-    return acc;
-  }, {});
-  const byCategory = {};
-  bookings.forEach((b) => {
-    (b.items || []).forEach((it) => {
-      const product = products.find((p) => p._id === it.product);
-      const cat = product?.category || 'Other';
-      byCategory[cat] = (byCategory[cat] || 0) + 1;
+app.get('/api/admin/stats', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const totalProducts = await Product.countDocuments();
+    const totalBookings = await Booking.countDocuments();
+    const totalCustomers = await User.countDocuments({ role: 'customer' });
+    
+    const paidBookings = await Booking.find({ paymentStatus: 'paid' });
+    const totalRevenue = paidBookings.reduce((sum, b) => sum + (b.totalAmount || 0), 0);
+    
+    const pendingBookings = await Booking.countDocuments({ status: 'pending' });
+    const activeRentals = await Booking.countDocuments({ 
+      status: { $in: ['confirmed', 'active'] } 
     });
-  });
-  const revenueTotal = bookings.filter((b) => b.paymentStatus === 'paid').reduce((s, b) => s + (b.totalAmount || 0), 0);
-  const byDay = Array.from({ length: 30 }, (_, i) => ({ day: i + 1, amount: Math.round(Math.random() * 3000) }));
-  const topProducts = Object.entries(
-    bookings.reduce((acc, b) => {
-      (b.items || []).forEach((it) => {
-        const name = products.find((p) => p._id === it.product)?.name || 'Unknown';
-        acc[name] = (acc[name] || 0) + 1;
-      });
-      return acc;
-    }, {})
-  )
-    .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount, revenue: Math.round(Math.random() * 10000) }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
-
-  res.json({
-    report: {
-      revenue: { total: revenueTotal, byDay },
-      bookings: { total: bookings.length, byStatus, byCategory },
-      topProducts,
-    },
-  });
+    
+    res.json({
+      stats: { totalProducts, totalBookings, totalCustomers, totalRevenue, pendingBookings, activeRentals }
+    });
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({ message: 'Error fetching admin stats' });
+  }
 });
 
-app.listen(PORT, () => {
+app.get('/api/admin/customers', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const customerUsers = await User.find({ role: 'customer' });
+    const list = await Promise.all(customerUsers.map(async (u) => {
+      const custBookings = await Booking.find({ 'user.email': u.email });
+      const totalSpent = custBookings
+        .filter((b) => b.paymentStatus === 'paid')
+        .reduce((s, b) => s + (b.totalAmount || 0), 0);
+      const lastBooking = custBookings[0]?.createdAt;
+      
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        phone: u.phone || '',
+        status: 'active',
+        createdAt: u.createdAt || new Date().toISOString(),
+        totalBookings: custBookings.length,
+        totalSpent,
+        lastBookingAt: lastBooking
+      };
+    }));
+    res.json({ customers: list });
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ message: 'Error fetching customers' });
+  }
+});
+
+app.get('/api/admin/reports', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    // Get all bookings and products for reporting
+    const bookings = await Booking.find();
+    const products = await Product.find();
+    
+    // Very simple report based on database data
+    const byStatus = bookings.reduce((acc, b) => {
+      acc[b.status] = (acc[b.status] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const byCategory = {};
+    bookings.forEach((b) => {
+      (b.items || []).forEach((it) => {
+        const product = products.find((p) => p._id.toString() === it.product.toString());
+        const cat = product?.category || 'Other';
+        byCategory[cat] = (byCategory[cat] || 0) + 1;
+      });
+    });
+    
+    const revenueTotal = bookings
+      .filter((b) => b.paymentStatus === 'paid')
+      .reduce((s, b) => s + (b.totalAmount || 0), 0);
+    
+    const byDay = Array.from({ length: 30 }, (_, i) => ({ day: i + 1, amount: Math.round(Math.random() * 3000) }));
+    
+    const topProducts = Object.entries(
+      bookings.reduce((acc, b) => {
+        (b.items || []).forEach((it) => {
+          const product = products.find((p) => p._id.toString() === it.product.toString());
+          const name = product?.name || 'Unknown';
+          acc[name] = (acc[name] || 0) + 1;
+        });
+        return acc;
+      }, {})
+    )
+      .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount, revenue: Math.round(Math.random() * 10000) }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+
+    res.json({
+      report: {
+        revenue: { total: revenueTotal, byDay },
+        bookings: { total: bookings.length, byStatus, byCategory },
+        topProducts,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    res.status(500).json({ message: 'Error fetching reports' });
+  }
+});
+
+app.listen(PORT, async () => {
   // eslint-disable-next-line no-console
   console.log(`Backend listening on http://localhost:${PORT}`);
+  console.log('Connecting to MongoDB...');
+  try {
+    await connectDB();
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+  }
 });
 
 
