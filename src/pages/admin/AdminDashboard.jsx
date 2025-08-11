@@ -137,6 +137,7 @@ const AdminDashboard = () => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'confirmed': return 'bg-blue-100 text-blue-800';
       case 'completed': return 'bg-blue-100 text-blue-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -246,7 +247,7 @@ const AdminDashboard = () => {
                               {booking.product?.name || 'Product Name'}
                             </h3>
                             <p className="text-sm text-gray-600">
-                              Customer: {booking.customer?.name || 'Customer Name'}
+                              Customer: {booking.user?.name || 'Customer Name'}
                             </p>
                             <p className="text-sm text-gray-600">
                               {new Date(booking.createdAt || Date.now()).toLocaleDateString()}
@@ -254,9 +255,9 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status || 'pending')}`}>
-                            {booking.status || 'pending'}
-                          </span>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status || 'pending')}`}>
+                {booking.status || 'pending'}
+              </span>
                           <p className="text-sm font-medium text-gray-900 mt-1">
                             ${booking.totalAmount || 0}
                           </p>

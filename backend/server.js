@@ -125,24 +125,24 @@ app.get('/', (_req, res) => {
 // Products API
 app.get('/api/products', async (req, res) => {
   try {
-    const { featured, limit, search, category, minPrice, maxPrice, sortBy } = req.query;
+  const { featured, limit, search, category, minPrice, maxPrice, sortBy } = req.query;
     
     // Build query object
     let query = {};
-    
-    if (featured === 'true') {
+
+  if (featured === 'true') {
       query.featured = true;
-    }
+  }
     
-    if (search) {
-      const q = String(search).toLowerCase();
+  if (search) {
+    const q = String(search).toLowerCase();
       query.$or = [
         { name: { $regex: q, $options: 'i' } },
         { description: { $regex: q, $options: 'i' } }
       ];
     }
     
-    if (category) {
+  if (category) {
       query.category = category;
     }
     
@@ -154,11 +154,11 @@ app.get('/api/products', async (req, res) => {
     
     // Build sort object
     let sort = {};
-    if (sortBy === 'name') {
+  if (sortBy === 'name') {
       sort.name = 1;
-    } else if (sortBy === 'price') {
+  } else if (sortBy === 'price') {
       sort.dailyRate = 1;
-    } else if (sortBy === 'rating') {
+  } else if (sortBy === 'rating') {
       sort.rating = -1;
     }
     
@@ -187,10 +187,10 @@ app.get('/api/products', async (req, res) => {
 app.get('/api/products/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
-    }
-    res.json({ product });
+  if (!product) {
+    return res.status(404).json({ message: 'Product not found' });
+  }
+  res.json({ product });
   } catch (error) {
     console.error('Error fetching product:', error);
     res.status(500).json({ message: 'Error fetching product' });
@@ -200,21 +200,21 @@ app.get('/api/products/:id', async (req, res) => {
 // Create product
 app.post('/api/products', async (req, res) => {
   try {
-    const body = req.body || {};
+  const body = req.body || {};
     const newProduct = new Product({
-      name: body.name,
-      description: body.description || '',
-      category: body.category || 'Other',
-      dailyRate: Number(body.dailyRate) || 0,
-      weeklyRate: body.weeklyRate ? Number(body.weeklyRate) : undefined,
-      monthlyRate: body.monthlyRate ? Number(body.monthlyRate) : undefined,
-      location: body.location || 'New York',
-      images: Array.isArray(body.images) ? body.images : [],
-      specifications: body.specifications || {},
-      availability: body.availability !== undefined ? !!body.availability : true,
-      rating: body.rating || 4.5,
-      featured: !!body.featured,
-      stock: Number(body.stock) || 5,
+    name: body.name,
+    description: body.description || '',
+    category: body.category || 'Other',
+    dailyRate: Number(body.dailyRate) || 0,
+    weeklyRate: body.weeklyRate ? Number(body.weeklyRate) : undefined,
+    monthlyRate: body.monthlyRate ? Number(body.monthlyRate) : undefined,
+    location: body.location || 'New York',
+    images: Array.isArray(body.images) ? body.images : [],
+    specifications: body.specifications || {},
+    availability: body.availability !== undefined ? !!body.availability : true,
+    rating: body.rating || 4.5,
+    featured: !!body.featured,
+    stock: Number(body.stock) || 5,
     });
     
     const savedProduct = await newProduct.save();
@@ -252,7 +252,7 @@ app.delete('/api/products/:id', async (req, res) => {
     if (!deletedProduct) {
       return res.status(404).json({ message: 'Product not found' });
     }
-    res.json({ success: true });
+  res.json({ success: true });
   } catch (error) {
     console.error('Error deleting product:', error);
     res.status(500).json({ message: 'Error deleting product' });
@@ -262,26 +262,26 @@ app.delete('/api/products/:id', async (req, res) => {
 // Auth API
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body || {};
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
-    }
+  const { name, email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
+  }
     
-    const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedEmail = String(email).trim().toLowerCase();
     
     // Check if user already exists
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      return res.status(409).json({ message: 'User already exists' });
-    }
+    return res.status(409).json({ message: 'User already exists' });
+  }
     
     // Auto-assign admin role for @rentease.com emails
     const isAdminEmail = normalizedEmail.includes('@rentease.com');
     const userRole = isAdminEmail ? 'admin' : 'customer';
     
     const user = new User({
-      name: name || normalizedEmail.split('@')[0],
-      email: normalizedEmail,
+    name: name || normalizedEmail.split('@')[0],
+    email: normalizedEmail,
       password: String(password).trim(),
       role: userRole,
     });
@@ -295,7 +295,7 @@ app.post('/api/auth/register', async (req, res) => {
       id: savedUser._id.toString()
     };
     
-    const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
+  const token = `mock.${Buffer.from(normalizedEmail).toString('base64')}.token`;
     
     res.json({ token, user: userForResponse });
   } catch (error) {
@@ -306,13 +306,13 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const email = String(req.body?.email || '').trim().toLowerCase();
-    const password = String(req.body?.password || '').trim();
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '').trim();
     
     const user = await User.findOne({ email });
     if (!user || user.password !== password) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    return res.status(401).json({ message: 'Invalid credentials' });
+  }
     
     const { password: _pw, ...userWithoutPassword } = user.toObject();
     
@@ -322,7 +322,7 @@ app.post('/api/auth/login', async (req, res) => {
       id: user._id.toString()
     };
     
-    const token = `mock.${Buffer.from(email).toString('base64')}.token`;
+  const token = `mock.${Buffer.from(email).toString('base64')}.token`;
     res.json({ token, user: userForResponse });
   } catch (error) {
     console.error('Error logging in:', error);
@@ -332,11 +332,11 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/auth/verify', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (!token) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
     
     const base64 = token.split('.')[1];
     const email = Buffer.from(base64, 'base64').toString('utf8');
@@ -362,11 +362,11 @@ app.get('/api/auth/verify', async (req, res) => {
 
 app.put('/api/auth/profile', async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (!token) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
     
     const base64 = token.split('.')[1];
     const email = Buffer.from(base64, 'base64').toString('utf8');
@@ -407,9 +407,9 @@ function hasAdminPrivileges(user) {
 // Simple auth middleware
 async function requireAuth(req, res, next) {
   try {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (!token) return res.status(401).json({ message: 'Unauthorized' });
     
     const base64 = token.split('.')[1];
     const email = Buffer.from(base64, 'base64').toString('utf8');
@@ -450,29 +450,29 @@ app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
 // Availability check
 app.post('/api/bookings/check-availability', async (req, res) => {
   try {
-    const { productId, startDate, endDate, quantity = 1 } = req.body || {};
+  const { productId, startDate, endDate, quantity = 1 } = req.body || {};
     const product = await Product.findById(productId);
-    if (!product) return res.status(404).json({ available: false, message: 'Product not found' });
+  if (!product) return res.status(404).json({ available: false, message: 'Product not found' });
     
-    const stock = Number(product.stock || 5);
-    // Count overlapping reserved units
+  const stock = Number(product.stock || 5);
+  // Count overlapping reserved units
     const overlappingBookings = await Booking.find({
       'items.product': productId,
       status: { $nin: ['cancelled', 'completed'] }
     });
     
-    let reserved = 0;
+  let reserved = 0;
     overlappingBookings.forEach((b) => {
-      (b.items || []).forEach((item) => {
+    (b.items || []).forEach((item) => {
         if (item.product.toString() === productId && isDateRangeOverlapping(item.startDate, item.endDate, startDate, endDate)) {
-          reserved += Number(item.quantity || 1);
-        }
-      });
+        reserved += Number(item.quantity || 1);
+      }
     });
+  });
     
-    const availableUnits = Math.max(0, stock - reserved);
-    const isAvailable = availableUnits >= Number(quantity || 1);
-    res.json({ available: isAvailable, availableUnits });
+  const availableUnits = Math.max(0, stock - reserved);
+  const isAvailable = availableUnits >= Number(quantity || 1);
+  res.json({ available: isAvailable, availableUnits });
   } catch (error) {
     console.error('Error checking availability:', error);
     res.status(500).json({ message: 'Error checking availability' });
@@ -482,9 +482,24 @@ app.post('/api/bookings/check-availability', async (req, res) => {
 // Bookings API
 app.get('/api/bookings', requireAuth, async (req, res) => {
   try {
+    console.log('Fetching bookings for user:', req.user.id, 'Admin privileges:', hasAdminPrivileges(req.user));
+    
     // Admin gets all; customer gets own
     const query = hasAdminPrivileges(req.user) ? {} : { 'user.id': req.user.id };
+    console.log('Query for bookings:', query);
+    
     const rawBookings = await Booking.find(query).sort({ createdAt: -1 });
+    console.log('Raw bookings found:', rawBookings.length);
+    
+    if (rawBookings.length > 0) {
+      console.log('Sample raw booking:', {
+        id: rawBookings[0]._id,
+        status: rawBookings[0].status,
+        paymentStatus: rawBookings[0].paymentStatus,
+        paymentInfo: rawBookings[0].paymentInfo,
+        user: rawBookings[0].user
+      });
+    }
     
     const list = await Promise.all(rawBookings.map(async (b) => {
       const firstItem = (b.items || [])[0] || {};
@@ -502,6 +517,17 @@ app.get('/api/bookings', requireAuth, async (req, res) => {
       };
     }));
     
+    console.log('Processed bookings count:', list.length);
+    if (list.length > 0) {
+      console.log('Sample processed booking:', {
+        id: list[0]._id,
+        status: list[0].status,
+        paymentStatus: list[0].paymentStatus,
+        paymentInfo: list[0].paymentInfo,
+        user: list[0].user
+      });
+    }
+    
     res.json({ bookings: list });
   } catch (error) {
     console.error('Error fetching bookings:', error);
@@ -512,24 +538,24 @@ app.get('/api/bookings', requireAuth, async (req, res) => {
 app.get('/api/bookings/:id', requireAuth, async (req, res) => {
   try {
     const raw = await Booking.findById(req.params.id);
-    if (!raw) return res.status(404).json({ message: 'Booking not found' });
+  if (!raw) return res.status(404).json({ message: 'Booking not found' });
     if (!hasAdminPrivileges(req.user) && raw.user?.id !== req.user.id) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
+    return res.status(403).json({ message: 'Forbidden' });
+  }
     
-    const firstItem = (raw.items || [])[0] || {};
+  const firstItem = (raw.items || [])[0] || {};
     const product = firstItem.product ? await Product.findById(firstItem.product) : null;
-    const booking = {
+  const booking = {
       ...raw.toObject(),
-      startDate: firstItem.startDate,
-      endDate: firstItem.endDate,
-      product,
+    startDate: firstItem.startDate,
+    endDate: firstItem.endDate,
+    product,
       items: await Promise.all((raw.items || []).map(async (it) => {
         const itemProduct = it.product ? await Product.findById(it.product) : null;
         return { ...it.toObject(), product: itemProduct };
       }))
-    };
-    res.json({ booking });
+  };
+  res.json({ booking });
   } catch (error) {
     console.error('Error fetching booking:', error);
     res.status(500).json({ message: 'Error fetching booking' });
@@ -538,45 +564,45 @@ app.get('/api/bookings/:id', requireAuth, async (req, res) => {
 
 app.post('/api/bookings', requireAuth, async (req, res) => {
   try {
-    const body = req.body || {};
-    const items = Array.isArray(body.items) ? body.items : [];
+  const body = req.body || {};
+  const items = Array.isArray(body.items) ? body.items : [];
     
-    // Basic availability validation per item
-    for (const item of items) {
+  // Basic availability validation per item
+  for (const item of items) {
       const product = await Product.findById(item.product);
-      if (!product) return res.status(400).json({ message: 'Invalid product' });
-    }
+    if (!product) return res.status(400).json({ message: 'Invalid product' });
+  }
     
     const totalAmount = Number(body.totalAmount) || await Promise.all(items.map(async (item) => {
       const product = await Product.findById(item.product);
       return calculateRentalPriceForItem(product, item.startDate, item.endDate, item.quantity || 1);
     })).then(amounts => amounts.reduce((sum, amount) => sum + amount, 0));
 
-    const booking = new Booking({
-      status: 'pending',
-      items,
-      deliveryInfo: body.deliveryInfo || {},
-      paymentInfo: body.paymentInfo || {},
-      totalAmount,
-      user: { id: req.user.id, name: req.user.name, email: req.user.email },
-      paymentStatus: 'unpaid',
-    });
+            const booking = new Booking({
+          status: 'pending', // Start as pending, admin must approve
+          items,
+          deliveryInfo: body.deliveryInfo || {},
+          paymentInfo: body.paymentInfo || {},
+          totalAmount,
+          user: { id: req.user.id, name: req.user.name, email: req.user.email },
+          paymentStatus: 'paid', // Always paid
+        });
     
     const savedBooking = await booking.save();
     
     const firstItem = (savedBooking.items || [])[0] || {};
     const product = firstItem.product ? await Product.findById(firstItem.product) : null;
-    const enriched = {
+  const enriched = {
       ...savedBooking.toObject(),
-      startDate: firstItem.startDate,
-      endDate: firstItem.endDate,
-      product,
+    startDate: firstItem.startDate,
+    endDate: firstItem.endDate,
+    product,
       items: await Promise.all((savedBooking.items || []).map(async (it) => {
         const itemProduct = it.product ? await Product.findById(it.product) : null;
         return { ...it.toObject(), product: itemProduct };
       }))
-    };
-    res.status(201).json({ booking: enriched });
+  };
+  res.status(201).json({ booking: enriched });
   } catch (error) {
     console.error('Error creating booking:', error);
     res.status(500).json({ message: 'Error creating booking' });
@@ -624,18 +650,18 @@ app.put('/api/bookings/:id/cancel', requireAuth, async (req, res) => {
 // Quotations
 app.post('/api/quotations', async (req, res) => {
   try {
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+  const items = Array.isArray(req.body?.items) ? req.body.items : [];
     const detailed = await Promise.all(items.map(async (item) => {
       const product = await Product.findById(item.product);
-      const quantity = Number(item.quantity || 1);
-      const lineTotal = product ? calculateRentalPriceForItem(product, item.startDate, item.endDate, quantity) : 0;
-      return { ...item, lineTotal };
+    const quantity = Number(item.quantity || 1);
+    const lineTotal = product ? calculateRentalPriceForItem(product, item.startDate, item.endDate, quantity) : 0;
+    return { ...item, lineTotal };
     }));
-    const subtotal = detailed.reduce((s, d) => s + (d.lineTotal || 0), 0);
-    const tax = subtotal * 0.08;
-    const deliveryFee = subtotal > 500 ? 0 : 50;
-    const total = subtotal + tax + deliveryFee;
-    res.json({ quotation: { items: detailed, subtotal, tax, deliveryFee, total } });
+  const subtotal = detailed.reduce((s, d) => s + (d.lineTotal || 0), 0);
+  const tax = subtotal * 0.08;
+  const deliveryFee = subtotal > 500 ? 0 : 50;
+  const total = subtotal + tax + deliveryFee;
+  res.json({ quotation: { items: detailed, subtotal, tax, deliveryFee, total } });
   } catch (error) {
     console.error('Error creating quotation:', error);
     res.status(500).json({ message: 'Error creating quotation' });
@@ -645,15 +671,17 @@ app.post('/api/quotations', async (req, res) => {
 // Payments (mock)
 app.post('/api/payments/create', requireAuth, async (req, res) => {
   try {
-    const { bookingId, amount } = req.body || {};
+  const { bookingId, amount } = req.body || {};
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+  if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    booking.paymentStatus = 'processing';
+  // Always mark as paid for all payments
+  booking.paymentStatus = 'paid';
+  // Keep status as pending, admin must approve
     await booking.save();
     
     const orderId = `order_${Date.now()}`;
-    res.json({ orderId, amount });
+  res.json({ orderId, amount });
   } catch (error) {
     console.error('Error creating payment:', error);
     res.status(500).json({ message: 'Error creating payment' });
@@ -662,15 +690,16 @@ app.post('/api/payments/create', requireAuth, async (req, res) => {
 
 app.post('/api/payments/verify', requireAuth, async (req, res) => {
   try {
-    const { bookingId, success = true } = req.body || {};
+  const { bookingId, success = true } = req.body || {};
     const booking = await Booking.findById(bookingId);
-    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+  if (!booking) return res.status(404).json({ message: 'Booking not found' });
     
-    booking.paymentStatus = success ? 'paid' : 'failed';
-    if (success && booking.status === 'pending') booking.status = 'confirmed';
+  // Always mark as paid for all payments
+  booking.paymentStatus = 'paid';
+  // Keep status as pending, admin must approve
     
     await booking.save();
-    res.json({ success: true, booking });
+  res.json({ success: true, booking });
   } catch (error) {
     console.error('Payment verification error:', error);
     res.status(500).json({ message: 'Error processing payment verification' });
@@ -904,7 +933,7 @@ app.post('/api/razorpay/create-order', requireAuth, async (req, res) => {
       currency,
       status: 'pending'
     };
-    booking.paymentStatus = 'processing';
+    booking.paymentStatus = 'paid'; // Always paid
     await booking.save();
 
     console.log('Sending response:', {
@@ -968,9 +997,12 @@ app.post('/api/razorpay/verify-payment', requireAuth, async (req, res) => {
       }
     }
 
-    // Update booking status - for UPI payments, always mark as paid
+    // Always mark as paid for all payment methods
     booking.paymentStatus = 'paid';
-    booking.status = 'confirmed';
+    // Keep status as pending, admin must approve
+    if (booking.status === 'pending') {
+      booking.status = 'pending'; // Keep pending for admin approval
+    }
     booking.paymentInfo = {
       ...booking.paymentInfo,
       razorpayPaymentId: razorpay_payment_id,
@@ -1004,22 +1036,37 @@ app.post('/api/razorpay/verify-upi', requireAuth, async (req, res) => {
   try {
     const { bookingId, upiId, amount } = req.body || {};
     
+    console.log('UPI verification request:', { bookingId, upiId, amount });
+    
     if (!bookingId || !upiId || !amount) {
       return res.status(400).json({ message: 'Booking ID, UPI ID, and amount are required' });
     }
 
     const booking = await Booking.findById(bookingId);
     if (!booking) {
+      console.log('Booking not found for UPI verification:', bookingId);
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    console.log('Found booking before update:', {
+      id: booking._id,
+      currentStatus: booking.status,
+      currentPaymentStatus: booking.paymentStatus,
+      currentPaymentInfo: booking.paymentInfo
+    });
+
     if (booking.user.id !== req.user.id) {
+      console.log('User mismatch in UPI verification:', { bookingUser: booking.user.id, reqUser: req.user.id });
       return res.status(403).json({ message: 'Forbidden' });
     }
 
     // For UPI payments, automatically mark as paid (simulating successful payment)
+    // Always mark as paid for UPI payments
     booking.paymentStatus = 'paid';
-    booking.status = 'confirmed';
+    // Keep status as pending, admin must approve
+    if (booking.status === 'pending') {
+      booking.status = 'pending'; // Keep pending for admin approval
+    }
     booking.paymentInfo = {
       ...booking.paymentInfo,
       paymentMethod: 'upi',
@@ -1029,9 +1076,21 @@ app.post('/api/razorpay/verify-upi', requireAuth, async (req, res) => {
       paidAt: new Date().toISOString()
     };
 
+    console.log('Updating booking with new data:', {
+      newStatus: booking.status,
+      newPaymentStatus: booking.paymentStatus,
+      newPaymentInfo: booking.paymentInfo
+    });
+
     await booking.save();
 
     console.log(`UPI payment verified for booking ${bookingId} via ${upiId}`);
+    console.log('Updated booking after save:', {
+      id: booking._id,
+      status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      paymentInfo: booking.paymentInfo
+    });
 
     res.json({
       success: true,
@@ -1066,7 +1125,10 @@ app.post('/api/razorpay/verify-otp', requireAuth, async (req, res) => {
     if (otp.length === 6 && /^\d{6}$/.test(otp)) {
       // Simulate successful OTP verification
       booking.paymentStatus = 'paid';
-      booking.status = 'confirmed';
+      // Keep status as pending, admin must approve
+      if (booking.status === 'pending') {
+        booking.status = 'pending'; // Keep pending for admin approval
+      }
       booking.paymentInfo = {
         ...booking.paymentInfo,
         status: 'completed',
@@ -1109,9 +1171,9 @@ app.get('/api/admin/stats', requireAuth, requireAdmin, async (_req, res) => {
       status: { $in: ['confirmed', 'active'] } 
     });
     
-    res.json({
-      stats: { totalProducts, totalBookings, totalCustomers, totalRevenue, pendingBookings, activeRentals }
-    });
+  res.json({
+    stats: { totalProducts, totalBookings, totalCustomers, totalRevenue, pendingBookings, activeRentals }
+  });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
     res.status(500).json({ message: 'Error fetching admin stats' });
@@ -1126,21 +1188,21 @@ app.get('/api/admin/customers', requireAuth, requireAdmin, async (_req, res) => 
       const totalSpent = custBookings
         .filter((b) => b.paymentStatus === 'paid')
         .reduce((s, b) => s + (b.totalAmount || 0), 0);
-      const lastBooking = custBookings[0]?.createdAt;
+    const lastBooking = custBookings[0]?.createdAt;
       
-      return {
+    return {
         id: u._id.toString(),
-        name: u.name,
-        email: u.email,
-        phone: u.phone || '',
-        status: 'active',
-        createdAt: u.createdAt || new Date().toISOString(),
-        totalBookings: custBookings.length,
-        totalSpent,
-        lastBookingAt: lastBooking
-      };
+      name: u.name,
+      email: u.email,
+      phone: u.phone || '',
+      status: 'active',
+      createdAt: u.createdAt || new Date().toISOString(),
+      totalBookings: custBookings.length,
+      totalSpent,
+      lastBookingAt: lastBooking
+    };
     }));
-    res.json({ customers: list });
+  res.json({ customers: list });
   } catch (error) {
     console.error('Error fetching customers:', error);
     res.status(500).json({ message: 'Error fetching customers' });
@@ -1154,47 +1216,47 @@ app.get('/api/admin/reports', requireAuth, requireAdmin, async (req, res) => {
     const products = await Product.find();
     
     // Very simple report based on database data
-    const byStatus = bookings.reduce((acc, b) => {
-      acc[b.status] = (acc[b.status] || 0) + 1;
-      return acc;
-    }, {});
+  const byStatus = bookings.reduce((acc, b) => {
+    acc[b.status] = (acc[b.status] || 0) + 1;
+    return acc;
+  }, {});
     
-    const byCategory = {};
-    bookings.forEach((b) => {
-      (b.items || []).forEach((it) => {
+  const byCategory = {};
+  bookings.forEach((b) => {
+    (b.items || []).forEach((it) => {
         const product = products.find((p) => p._id.toString() === it.product.toString());
-        const cat = product?.category || 'Other';
-        byCategory[cat] = (byCategory[cat] || 0) + 1;
-      });
+      const cat = product?.category || 'Other';
+      byCategory[cat] = (byCategory[cat] || 0) + 1;
     });
+  });
     
     const revenueTotal = bookings
       .filter((b) => b.paymentStatus === 'paid')
       .reduce((s, b) => s + (b.totalAmount || 0), 0);
     
-    const byDay = Array.from({ length: 30 }, (_, i) => ({ day: i + 1, amount: Math.round(Math.random() * 3000) }));
+  const byDay = Array.from({ length: 30 }, (_, i) => ({ day: i + 1, amount: Math.round(Math.random() * 3000) }));
     
-    const topProducts = Object.entries(
-      bookings.reduce((acc, b) => {
-        (b.items || []).forEach((it) => {
+  const topProducts = Object.entries(
+    bookings.reduce((acc, b) => {
+      (b.items || []).forEach((it) => {
           const product = products.find((p) => p._id.toString() === it.product.toString());
           const name = product?.name || 'Unknown';
-          acc[name] = (acc[name] || 0) + 1;
-        });
-        return acc;
-      }, {})
-    )
-      .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount, revenue: Math.round(Math.random() * 10000) }))
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+        acc[name] = (acc[name] || 0) + 1;
+      });
+      return acc;
+    }, {})
+  )
+    .map(([name, bookingsCount]) => ({ name, bookings: bookingsCount, revenue: Math.round(Math.random() * 10000) }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
 
-    res.json({
-      report: {
-        revenue: { total: revenueTotal, byDay },
-        bookings: { total: bookings.length, byStatus, byCategory },
-        topProducts,
-      },
-    });
+  res.json({
+    report: {
+      revenue: { total: revenueTotal, byDay },
+      bookings: { total: bookings.length, byStatus, byCategory },
+      topProducts,
+    },
+  });
   } catch (error) {
     console.error('Error fetching reports:', error);
     res.status(500).json({ message: 'Error fetching reports' });

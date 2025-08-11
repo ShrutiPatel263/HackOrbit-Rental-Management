@@ -17,17 +17,19 @@ import { useRental } from '../context/RentalContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import RazorpayPayment from '../components/ui/RazorpayPayment';
+import UPIPayment from '../components/ui/UPIPayment';
 import toast from 'react-hot-toast';
 import { rentalService } from '../services/api';
 
 const Checkout = () => {
-  const { cart, removeFromCart, updateCartQuantity, calculateTotal, createBooking, clearCart } = useRental();
+  const { cart, removeFromCart, updateCartQuantity, calculateTotal, createBooking, clearCart, fetchBookings } = useRental();
   const { user } = useAuth();
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [showRazorpay, setShowRazorpay] = useState(false);
+  const [showUPI, setShowUPI] = useState(false);
   const [currentBooking, setCurrentBooking] = useState(null);
   
   const [deliveryInfo, setDeliveryInfo] = useState({
@@ -114,31 +116,37 @@ const Checkout = () => {
 
     setLoading(true);
     try {
-      const bookingData = {
-        items: cart.map(item => ({
-          product: item.product._id,
-          quantity: item.quantity,
-          startDate: item.startDate,
-          endDate: item.endDate,
-          dailyRate: item.product.dailyRate
-        })),
-        deliveryInfo,
-        paymentInfo: {
-          method: paymentInfo.method,
-          amount: total
-        },
-        totalAmount: total,
-        subtotal,
-        deliveryFee,
-        tax
-      };
+             const bookingData = {
+         items: cart.map(item => ({
+           product: item.product._id,
+           quantity: item.quantity,
+           startDate: item.startDate,
+           endDate: item.endDate,
+           dailyRate: item.product.dailyRate
+         })),
+         deliveryInfo,
+         paymentInfo: {
+           method: paymentInfo.method,
+           amount: total
+         },
+         totalAmount: total,
+         subtotal,
+         deliveryFee,
+         tax,
+         // Hardcode payment status to paid
+         paymentStatus: 'paid'
+         // Status will be 'pending' by default, admin must approve
+       };
 
       const result = await createBooking(bookingData, paymentInfo.method !== 'razorpay');
       
       if (paymentInfo.method === 'razorpay') {
         try {
           // Try to create Razorpay order using authenticated API client (adds Authorization header)
-          const orderRes = await rentalService.createRazorpayOrder(result.booking._id, total);
+          const orderRes = await rentalService.createRazorpayOrder({ 
+            bookingId: result.booking._id, 
+            amount: total 
+          });
           setCurrentBooking({
             ...result.booking,
             razorpayOrderId: orderRes?.orderId || null,
@@ -154,9 +162,21 @@ const Checkout = () => {
           });
           setShowRazorpay(true);
         }
+      } else if (paymentInfo.method === 'upi') {
+        // For UPI payment, show UPI payment modal
+        setCurrentBooking(result.booking);
+        setShowUPI(true);
       } else {
         // For regular card payment, proceed as before
         toast.success('Booking created successfully!');
+        
+        // Refresh bookings data to update admin panel
+        try {
+          await fetchBookings();
+        } catch (error) {
+          console.error('Failed to refresh bookings:', error);
+        }
+        
         navigate(`/booking-confirmation/${result.booking._id}`);
       }
     } catch (error) {
@@ -447,7 +467,7 @@ const Checkout = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-3">
                       Payment Method
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <button
                         type="button"
                         onClick={() => setPaymentInfo(prev => ({ ...prev, method: 'card' }))}
@@ -475,6 +495,21 @@ const Checkout = () => {
                         <div className="flex items-center space-x-3">
                           <Shield className="h-5 w-5 text-blue-600" />
                           <span className="font-medium">Razorpay</span>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setPaymentInfo(prev => ({ ...prev, method: 'upi' }))}
+                        className={`p-4 border rounded-lg text-left transition-colors ${
+                          paymentInfo.method === 'upi'
+                            ? 'border-blue-600 bg-blue-50'
+                            : 'border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <CreditCard className="h-5 w-5 text-green-600" />
+                          <span className="font-medium">UPI Payment</span>
                         </div>
                       </button>
                     </div>
@@ -552,6 +587,21 @@ const Checkout = () => {
                           <h3 className="font-medium text-blue-900">Secure Payment with Razorpay</h3>
                           <p className="text-sm text-blue-700">
                             You will be redirected to Razorpay's secure payment gateway to complete your transaction.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* UPI Payment Info */}
+                  {paymentInfo.method === 'upi' && (
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-3">
+                        <CreditCard className="h-6 w-6 text-green-600" />
+                        <div>
+                          <h3 className="font-medium text-green-900">UPI Payment</h3>
+                          <p className="text-sm text-green-700">
+                            Enter your UPI ID to complete the payment. This is a demo system for testing purposes.
                           </p>
                         </div>
                       </div>
@@ -668,9 +718,17 @@ const Checkout = () => {
         <RazorpayPayment
           isOpen={showRazorpay}
           onClose={() => setShowRazorpay(false)}
-          onSuccess={(result) => {
+          onSuccess={async (result) => {
             setShowRazorpay(false);
             clearCart(); // Clear cart after successful payment
+            
+            // Refresh bookings data to update admin panel
+            try {
+              await fetchBookings();
+            } catch (error) {
+              console.error('Failed to refresh bookings:', error);
+            }
+            
             // Navigate to booking confirmation
             navigate('/booking-confirmation', { 
               state: { 
@@ -703,6 +761,49 @@ const Checkout = () => {
             createdAt: new Date().toISOString()
           }}
           bookingId={currentBooking?.id}
+        />
+      )}
+
+      {/* UPI Payment Modal */}
+      {showUPI && (
+        <UPIPayment
+          isOpen={showUPI}
+          onClose={() => setShowUPI(false)}
+          onSuccess={async (result) => {
+            setShowUPI(false);
+            clearCart(); // Clear cart after successful payment
+            
+            console.log('UPI payment successful, refreshing bookings...');
+            
+            // Refresh bookings data to update admin panel
+            try {
+              await fetchBookings();
+              console.log('Bookings refreshed after UPI payment');
+            } catch (error) {
+              console.error('Failed to refresh bookings after UPI payment:', error);
+            }
+            
+            // Add a small delay to ensure backend has processed the payment
+            setTimeout(async () => {
+              try {
+                console.log('Delayed refresh after UPI payment...');
+                await fetchBookings();
+                console.log('Delayed refresh completed');
+              } catch (error) {
+                console.error('Failed to refresh bookings after delay:', error);
+              }
+            }, 2000);
+            
+            // Navigate to booking confirmation
+            navigate('/booking-confirmation', { 
+              state: { 
+                booking: currentBooking,
+                paymentSuccess: true 
+              } 
+            });
+          }}
+          bookingId={currentBooking?._id}
+          amount={total}
         />
       )}
     </div>

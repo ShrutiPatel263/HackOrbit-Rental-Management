@@ -86,7 +86,10 @@ export const RentalProvider = ({ children }) => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
+      console.log('RentalContext - Fetching bookings...');
       const response = await rentalService.getBookings();
+      console.log('RentalContext - Received bookings response:', response);
+      console.log('RentalContext - Setting bookings:', response.bookings);
       setBookings(response.bookings);
       return response;
     } catch (error) {

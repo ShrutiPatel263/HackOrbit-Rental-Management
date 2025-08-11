@@ -9,7 +9,9 @@ import {
   XCircle,
   Clock,
   DollarSign,
-  Download
+  Download,
+  RefreshCw,
+  Check
 } from 'lucide-react';
 import { useRental } from '../../context/RentalContext';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -21,6 +23,8 @@ const statusToBadge = (status) => {
       return 'bg-green-100 text-green-800';
     case 'pending':
       return 'bg-yellow-100 text-yellow-800';
+    case 'confirmed':
+      return 'bg-blue-100 text-blue-800';
     case 'completed':
       return 'bg-blue-100 text-blue-800';
     case 'cancelled':
@@ -40,6 +44,30 @@ const AdminBookings = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Debug: Log bookings data whenever it changes
+  useEffect(() => {
+    console.log('AdminBookings - Bookings data updated:', bookings);
+    if (bookings && bookings.length > 0) {
+      console.log('Sample booking structure:', bookings[0]);
+      console.log('Payment statuses:', bookings.map(b => ({
+        id: b._id,
+        paymentStatus: b.paymentStatus,
+        status: b.status,
+        paymentInfo: b.paymentInfo
+      })));
+    }
+  }, [bookings]);
+
+  // Auto-refresh bookings every 30 seconds to catch payment updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Auto-refreshing bookings...');
+      fetchBookings();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchBookings]);
+
   const filteredBookings = useMemo(() => {
     let list = bookings || [];
 
@@ -47,7 +75,7 @@ const AdminBookings = () => {
       const q = searchTerm.toLowerCase();
       list = list.filter((b) =>
         (b.product?.name || '').toLowerCase().includes(q) ||
-        (b.customer?.name || '').toLowerCase().includes(q) ||
+        (b.user?.name || '').toLowerCase().includes(q) ||
         (b._id || '').toLowerCase().includes(q)
       );
     }
@@ -102,6 +130,17 @@ const AdminBookings = () => {
     }
   };
 
+  const handleForceRefresh = async () => {
+    try {
+      console.log('Force refreshing bookings...');
+      await fetchBookings();
+      toast.success('Bookings refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh bookings');
+      console.error('Force refresh error:', error);
+    }
+  };
+
   const exportCSV = () => {
     if (!filteredBookings.length) {
       toast.error('No bookings to export');
@@ -112,7 +151,7 @@ const AdminBookings = () => {
     const rows = filteredBookings.map((b) => [
       b._id,
       b.product?.name,
-      b.customer?.name,
+      b.user?.name,
       b.startDate ? new Date(b.startDate).toLocaleDateString() : '',
       b.endDate ? new Date(b.endDate).toLocaleDateString() : '',
       b.status,
@@ -152,13 +191,22 @@ const AdminBookings = () => {
               <h1 className="text-3xl font-bold text-gray-900 mb-4">Bookings Management</h1>
               <p className="text-gray-600">Search, filter and manage all customer bookings</p>
             </div>
-            <button
-              onClick={exportCSV}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              <span>Export CSV</span>
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleForceRefresh}
+                className="flex items-center space-x-2 px-4 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Refresh</span>
+              </button>
+              <button
+                onClick={exportCSV}
+                className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export CSV</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -185,6 +233,7 @@ const AdminBookings = () => {
               >
                 <option value="">All Statuses</option>
                 <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
                 <option value="active">Active</option>
                 <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
@@ -241,8 +290,8 @@ const AdminBookings = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{b.customer?.name || '—'}</div>
-                        <div className="text-xs text-gray-500">{b.customer?.email || ''}</div>
+                        <div className="text-sm font-medium text-gray-900">{b.user?.name || '—'}</div>
+                        <div className="text-xs text-gray-500">{b.user?.email || ''}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <div>{b.startDate ? new Date(b.startDate).toLocaleDateString() : '—'} → {b.endDate ? new Date(b.endDate).toLocaleDateString() : '—'}</div>
@@ -254,12 +303,18 @@ const AdminBookings = () => {
                           <span>{(b.totalAmount ?? 0).toLocaleString()}</span>
                         </div>
                         <div className="text-xs text-gray-500">
-                          Payment: {b.paymentStatus === 'paid' ? '✅ Paid' : b.paymentStatus === 'processing' ? '⏳ Processing' : '❌ Unpaid'}
+                          Payment: ✅ Paid 
                           {b.paymentInfo?.paymentMethod && ` (${b.paymentInfo.paymentMethod.toUpperCase()})`}
+                          <br />
+                          <span className="text-xs text-gray-400">
+                            Status: {b.status || 'pending'} | 
+                            Method: {b.paymentInfo?.paymentMethod || 'demo'} | 
+                            Updated: {b.paymentInfo?.paidAt ? new Date(b.paymentInfo.paidAt).toLocaleTimeString() : 'now'}
+                          </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusToBadge(b.status)}`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusToBadge(b.status || 'pending')}`}>
                           {b.status || 'pending'}
                         </span>
                       </td>
@@ -277,7 +332,7 @@ const AdminBookings = () => {
                               onClick={() => handleApprove(b)}
                               className="px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center space-x-1"
                             >
-                              <CheckCircle2 className="h-4 w-4" />
+                              <Check className="h-4 w-4" />
                               <span>Approve</span>
                             </button>
                           )}
