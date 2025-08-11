@@ -1,0 +1,44 @@
+{
+  "demo@customer.com": {
+    "id": "u_demo",
+    "name": "Demo Customer",
+    "email": "demo@customer.com",
+    "password": "password123",
+    "role": "customer"
+  },
+  "admin@rentease.com": {
+    "id": "u_admin",
+    "name": "Admin User",
+    "email": "admin@rentease.com",
+    "password": "admin123",
+    "role": "admin"
+  },
+  "demo8@customer.com": {
+    "id": "u_3d28qild4qq",
+    "name": "Customer8",
+    "email": "demo8@customer.com",
+    "role": "customer",
+    "password": "demo86"
+  },
+  "admin3@rentease.com": {
+    "id": "u_6kfums9iwhr",
+    "name": "admin3",
+    "email": "admin3@rentease.com",
+    "role": "customer",
+    "password": "admin456"
+  },
+  "admin@rentease1.com": {
+    "id": "u_yg5tvk8c7ih",
+    "name": "admin2",
+    "email": "admin@rentease1.com",
+    "role": "customer",
+    "password": "admin456"
+  },
+  "demo56@customer.com": {
+    "id": "u_4ixhnmm0g0d",
+    "name": "Customer5",
+    "email": "demo56@customer.com",
+    "role": "customer",
+    "password": "demo567"
+  }
+}

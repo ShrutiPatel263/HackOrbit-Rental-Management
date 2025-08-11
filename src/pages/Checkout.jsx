@@ -18,6 +18,7 @@ import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import RazorpayPayment from '../components/ui/RazorpayPayment';
 import toast from 'react-hot-toast';
+import { rentalService } from '../services/api';
 
 const Checkout = () => {
   const { cart, removeFromCart, updateCartQuantity, calculateTotal, createBooking, clearCart } = useRental();
@@ -135,9 +136,24 @@ const Checkout = () => {
       const result = await createBooking(bookingData);
       
       if (paymentInfo.method === 'razorpay') {
-        // For Razorpay, show payment modal
-        setCurrentBooking(result.booking);
-        setShowRazorpay(true);
+        try {
+          // Try to create Razorpay order using authenticated API client (adds Authorization header)
+          const orderRes = await rentalService.createRazorpayOrder(result.booking._id, total);
+          setCurrentBooking({
+            ...result.booking,
+            razorpayOrderId: orderRes?.orderId || null,
+          });
+          setShowRazorpay(true);
+        } catch (err) {
+          // Even if server fails (500), open the Razorpay modal and let it use client-side fallback
+          console.error('Razorpay order creation failed, using fallback:', err);
+          toast('Opening Razorpay test checkout...');
+          setCurrentBooking({
+            ...result.booking,
+            razorpayOrderId: null,
+          });
+          setShowRazorpay(true);
+        }
       } else {
         // For regular card payment, proceed as before
         toast.success('Booking created successfully!');
@@ -332,7 +348,7 @@ const Checkout = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text_sm font-medium text-gray-700 mb-2">
                         Phone Number *
                       </label>
                       <input
@@ -594,7 +610,7 @@ const Checkout = () => {
                   <span className="font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
                 </div>
                 
-                <div className="flex items-center justify-between">
+                <div className="flex items_center justify-between">
                   <div className="flex items-center space-x-1">
                     <Truck className="h-4 w-4 text-gray-400" />
                     <span className="text-gray-600">Delivery Fee</span>
@@ -610,7 +626,7 @@ const Checkout = () => {
                 </div>
                 
                 <div className="border-t border-gray-200 pt-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify_between">
                     <span className="text-lg font-semibold text-gray-900">Total</span>
                     <span className="text-2xl font-bold text-blue-600">${total.toFixed(2)}</span>
                   </div>
@@ -634,7 +650,7 @@ const Checkout = () => {
                   <span>Secure payment processing</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Package className="h-4 w-4 text-green-600" />
+                  <Package className="h-4 w-4 text_green-600" />
                   <span>All items insured</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -651,6 +667,7 @@ const Checkout = () => {
       {showRazorpay && currentBooking && (
         <RazorpayPayment
           bookingId={currentBooking._id}
+          orderId={currentBooking.razorpayOrderId}
           amount={total}
           currency="INR"
           onSuccess={(booking) => {
