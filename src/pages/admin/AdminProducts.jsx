@@ -14,6 +14,7 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { useRental } from '../../context/RentalContext';
+import { rentalService } from '../../services/api';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -37,6 +38,8 @@ const AdminProducts = () => {
     specifications: {},
     availability: true
   });
+  const [imageFiles, setImageFiles] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   const categories = [
     'Construction Equipment',
@@ -81,19 +84,42 @@ const AdminProducts = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editingProduct) {
-        // Update product logic
+      setSaving(true);
+      // Upload images if any local files selected
+      let uploadedUrls = [];
+      if (imageFiles && imageFiles.length) {
+        const uploads = await Promise.all(
+          Array.from(imageFiles).map((file) => rentalService.uploadFile(file, 'product'))
+        );
+        uploadedUrls = uploads.map((u) => u.url || u.fileUrl || u.path).filter(Boolean);
+      }
+
+      const payload = {
+        ...productForm,
+        dailyRate: Number(productForm.dailyRate || 0),
+        weeklyRate: productForm.weeklyRate ? Number(productForm.weeklyRate) : undefined,
+        monthlyRate: productForm.monthlyRate ? Number(productForm.monthlyRate) : undefined,
+        images: [...(productForm.images || []), ...uploadedUrls],
+      };
+
+      if (editingProduct?._id) {
+        await rentalService.updateProduct(editingProduct._id, payload);
         toast.success('Product updated successfully!');
       } else {
-        // Create product logic
+        await rentalService.createProduct(payload);
         toast.success('Product created successfully!');
       }
+
       setShowAddModal(false);
       setEditingProduct(null);
       resetForm();
-      fetchProducts();
+      setImageFiles([]);
+      await fetchProducts();
     } catch (error) {
+      console.error(error);
       toast.error('Failed to save product');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -132,10 +158,11 @@ const AdminProducts = () => {
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
-        // Delete product logic
+        await rentalService.deleteProduct(productId);
         toast.success('Product deleted successfully!');
-        fetchProducts();
+        await fetchProducts();
       } catch (error) {
+        console.error(error);
         toast.error('Failed to delete product');
       }
     }
@@ -167,6 +194,7 @@ const AdminProducts = () => {
               onClick={() => {
                 resetForm();
                 setEditingProduct(null);
+                setImageFiles([]);
                 setShowAddModal(true);
               }}
               className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors"
@@ -467,6 +495,7 @@ const AdminProducts = () => {
                       accept="image/*"
                       className="hidden"
                       id="images"
+                      onChange={(e) => setImageFiles(e.target.files)}
                     />
                     <label
                       htmlFor="images"
@@ -474,6 +503,9 @@ const AdminProducts = () => {
                     >
                       Choose Images
                     </label>
+                    {imageFiles && imageFiles.length > 0 && (
+                      <p className="mt-3 text-sm text-gray-600">{imageFiles.length} file(s) selected</p>
+                    )}
                   </div>
                 </div>
 
