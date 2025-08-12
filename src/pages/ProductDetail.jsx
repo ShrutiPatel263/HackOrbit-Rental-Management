@@ -14,6 +14,7 @@ import {
   Share2,
   Plus,
   Minus,
+  Eye,
   Check
 } from 'lucide-react';
 import { useRental } from '../context/RentalContext';
@@ -23,6 +24,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ReviewList from '../components/ui/ReviewList';
 import toast from 'react-hot-toast';
 import ImageWithFallback from '../components/ui/ImageWithFallback';
+
 
 const ProductDetail = () => {
   const { id } = useParams();

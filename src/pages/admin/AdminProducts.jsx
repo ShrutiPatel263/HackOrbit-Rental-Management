@@ -311,9 +311,13 @@ const AdminProducts = () => {
                     <span>Edit</span>
                   </button>
                   
-                  <button className="flex items-center justify-center px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors">
-                    <Eye className="h-3 w-3" />
-                  </button>
+                 <button
+                   className="px-3 py-2 bg-blue-100 text-blue-700 rounded-lg flex items-center gap-1 hover:bg-blue-200 transition-colors"
+                   onClick={() => window.open(`/products/${product._id}`, '_blank')}
+                   title="View Product"
+      >
+               <Eye className="h-4 w-4" />
+           </button>
                   
                   <button
                     onClick={() => handleDelete(product._id)}
