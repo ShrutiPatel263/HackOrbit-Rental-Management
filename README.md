@@ -79,7 +79,7 @@ Manage Bookings through customer dashboard
 
 ### 📊 Technologies Used
 
-Frontend
+#### Frontend:
 
 React.js
 
@@ -89,7 +89,7 @@ JavaScript (ES6+)
 
 Bootstrap / Tailwind CSS
 
-Backend
+#### Backend:
 
 Node.js & Express.js
 
@@ -101,15 +101,18 @@ Multer (file uploads)
 
 Nodemailer (email service)
 
-Database
+#### Database:
 
 MongoDB
 
 MongoDB Atlas Cluster
 
-Payment & Integration
+#### Payment & Integration:
 
 Razorpay Payment Gateway
+
 Email notifications
+
 Calendar integration
+
 PDF generation
