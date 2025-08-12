@@ -146,7 +146,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Spent</p>
-                <p className="text-3xl font-bold text-gray-900">₹{stats.totalSpent}</p>
+                <p className="text-3xl font-bold text-gray-900">₹{stats.totalSpent.toFixed(2)}</p>
               </div>
               <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <DollarSign className="h-6 w-6 text-purple-600" />
