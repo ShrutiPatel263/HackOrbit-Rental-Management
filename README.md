@@ -6,6 +6,10 @@ Contributers:
 
 Problem Statement 3
 
+## Video link and project workflow:
+
+https://drive.google.com/file/d/1FZK_RiBJRy8GQYmccUeLqTDU3QzE_OvP/view?usp=sharing
+
 ## HackOrbit Rental Management System 🏠🚗
 
 A comprehensive rental management application that streamlines the entire rental process through a unified platform. This system enables businesses to manage products, schedule pickups, handle online bookings, and process reservations through an integrated web portal.
